@@ -3,10 +3,17 @@ import { Ga4Overview } from "@/components/ga4-overview";
 import { Ga4SinceLaunch } from "@/components/ga4-since-launch";
 import { WeeklyInsights } from "@/components/weekly-insights";
 import { RefreshButton } from "@/components/refresh-button";
+import { DateRangeSelect } from "@/components/date-range-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 
-export default function OverviewPage() {
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+
+export default function OverviewPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   return (
     <div className="space-y-10">
       <div className="flex items-end justify-between">
@@ -16,7 +23,12 @@ export default function OverviewPage() {
             Traffic and channels from Google Analytics
           </p>
         </div>
-        <RefreshButton />
+        <div className="flex items-center gap-2">
+          <Suspense fallback={<div className="w-[160px] h-9" />}>
+            <DateRangeSelect />
+          </Suspense>
+          <RefreshButton />
+        </div>
       </div>
 
       <Suspense fallback={<InsightsSkeleton />}>
@@ -24,7 +36,7 @@ export default function OverviewPage() {
       </Suspense>
 
       <Suspense fallback={<OverviewSkeleton />}>
-        <Ga4Overview />
+        <Ga4OverviewSection searchParams={searchParams} />
       </Suspense>
 
       <Separator />
@@ -34,6 +46,13 @@ export default function OverviewPage() {
       </Suspense>
     </div>
   );
+}
+
+async function Ga4OverviewSection({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const daysParam = Array.isArray(params.days) ? params.days[0] : params.days;
+  const days = Number(daysParam) || 7;
+  return <Ga4Overview days={days} />;
 }
 
 function InsightsSkeleton() {

@@ -15,7 +15,7 @@ function formatNumber(n: number) {
   return new Intl.NumberFormat("en-US").format(Math.round(n));
 }
 
-export async function GscOverview() {
+export async function GscOverview({ days = 7 }: { days?: number }) {
   await connection();
 
   if (!isGscConfigured()) {
@@ -28,7 +28,7 @@ export async function GscOverview() {
 
   let summary;
   try {
-    summary = await getGscSummary(7);
+    summary = await getGscSummary(days);
   } catch (error) {
     return (
       <div className="rounded-md border border-dashed border-red-300 p-6 text-sm text-red-600">
@@ -44,8 +44,8 @@ export async function GscOverview() {
     <div className="space-y-8">
       <section>
         <SectionTitle
-          title="This week"
-          subtitle="Last 7 days (Search Console data lags ~2 days)"
+          title={days === 7 ? "This week" : `Last ${days} days`}
+          subtitle={`Last ${days} days (Search Console data lags ~2 days)`}
         />
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <MetricCard label="Clicks" value={formatNumber(totals.clicks)} hint="GSC" />

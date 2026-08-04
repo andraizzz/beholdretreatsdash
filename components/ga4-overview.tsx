@@ -55,8 +55,8 @@ export async function Ga4Overview({ days = 7 }: { days?: number }) {
     <div className="space-y-8">
       <section>
         <SectionTitle
-          title="This week"
-          subtitle="Last 7 days vs. the 7 days before that"
+          title={days === 7 ? "This week" : `Last ${days} days`}
+          subtitle={`Last ${days} days vs. the ${days} days before that`}
         />
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <MetricCard
@@ -86,7 +86,7 @@ export async function Ga4Overview({ days = 7 }: { days?: number }) {
       <section>
         <SectionTitle
           title="Traffic by channel"
-          subtitle="Which channels are driving sessions and key events this week"
+          subtitle={`Which channels are driving sessions and key events, last ${days} days`}
         />
         <div className="rounded-md border">
           <Table>
@@ -123,7 +123,7 @@ export async function Ga4Overview({ days = 7 }: { days?: number }) {
       </section>
 
       <section>
-        <SectionTitle title="Daily trend" subtitle="Sessions and key events, last 7 days" />
+        <SectionTitle title="Daily trend" subtitle={`Sessions and key events, last ${days} days`} />
         <SessionsTrendChart data={trend} />
       </section>
     </div>
