@@ -5,14 +5,7 @@ import {
 } from "@/lib/sources/ga4";
 import { MetricCard } from "@/components/metric-card";
 import { SectionTitle } from "@/components/placeholder";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ChannelBreakdown, type ChannelBreakdownRow } from "@/components/channel-breakdown";
 import { SessionsTrendChart } from "@/components/sessions-trend-chart";
 import { connection } from "next/server";
 
@@ -49,7 +42,24 @@ export async function Ga4Overview({ days = 7 }: { days?: number }) {
     );
   }
 
-  const { totals, previousTotals, byChannel, trend } = summary;
+  const { totals, previousTotals, byChannel, previousByChannel, trend } = summary;
+
+  const previousByChannelMap = new Map(
+    previousByChannel.map((c) => [c.channel, c]),
+  );
+  const totalSessions = byChannel.reduce((sum, c) => sum + c.sessions, 0);
+  const channelRows: ChannelBreakdownRow[] = byChannel.map((c) => {
+    const prev = previousByChannelMap.get(c.channel);
+    return {
+      channel: c.channel,
+      sessions: c.sessions,
+      previousSessions: prev ? prev.sessions : null,
+      share: totalSessions > 0 ? c.sessions / totalSessions : 0,
+      deltaPct: prev ? pctDelta(c.sessions, prev.sessions) : null,
+      engagementRate: c.engagementRate,
+      keyEvents: c.keyEvents,
+    };
+  });
 
   return (
     <div className="space-y-8">
@@ -85,40 +95,11 @@ export async function Ga4Overview({ days = 7 }: { days?: number }) {
 
       <section>
         <SectionTitle
-          title="Traffic by channel"
-          subtitle={`Which channels are driving sessions and key events, last ${days} days`}
+          title="The marketing pie — what's working, channel by channel"
+          subtitle={`Share of traffic and week-over-week trend per channel, last ${days} days vs. the ${days} before`}
         />
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Channel</TableHead>
-                <TableHead className="text-right">Sessions</TableHead>
-                <TableHead className="text-right">Users</TableHead>
-                <TableHead className="text-right">Engagement</TableHead>
-                <TableHead className="text-right">Key events</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {byChannel.map((row) => (
-                <TableRow key={row.channel}>
-                  <TableCell className="font-medium">{row.channel}</TableCell>
-                  <TableCell className="text-right">
-                    {formatNumber(row.sessions)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatNumber(row.totalUsers)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {(row.engagementRate * 100).toFixed(1)}%
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatNumber(row.keyEvents)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="rounded-md border p-4">
+          <ChannelBreakdown rows={channelRows} />
         </div>
       </section>
 

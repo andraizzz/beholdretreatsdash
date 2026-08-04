@@ -33,9 +33,22 @@ function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * "Today" in GA4 is always a partial day — most of this traffic is US-based,
+ * so at most hours of the day the current day's session count looks like a
+ * cliff-drop purely because the day hasn't finished yet. Every date range in
+ * this file ends at yesterday, not today, so totals/trends/comparisons are
+ * always full-day-to-full-day.
+ */
+function yesterday(): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d;
+}
+
 function dateRangeForLastNDays(days: number) {
-  const end = new Date();
-  const start = new Date();
+  const end = yesterday();
+  const start = new Date(end);
   start.setDate(start.getDate() - (days - 1));
   return { startDate: isoDate(start), endDate: isoDate(end) };
 }
@@ -62,6 +75,7 @@ export type Ga4Summary = {
     keyEvents: number;
   };
   byChannel: ChannelRow[];
+  previousByChannel: ChannelRow[];
   trend: { date: string; sessions: number; keyEvents: number }[];
 };
 
@@ -77,14 +91,19 @@ async function fetchGa4Summary(days: number): Promise<Ga4Summary> {
   const { client, propertyId } = conn;
 
   const current = dateRangeForLastNDays(days);
-  const prevEnd = new Date();
-  prevEnd.setDate(prevEnd.getDate() - days);
-  const prevStart = new Date();
-  prevStart.setDate(prevStart.getDate() - days * 2 + 1);
+  const prevEnd = new Date(current.startDate);
+  prevEnd.setDate(prevEnd.getDate() - 1);
+  const prevStart = new Date(prevEnd);
+  prevStart.setDate(prevStart.getDate() - (days - 1));
   const previous = { startDate: isoDate(prevStart), endDate: isoDate(prevEnd) };
 
-  const [totalsReport, channelReport, trendReport, previousTotalsReport] =
-    await Promise.all([
+  const [
+    totalsReport,
+    channelReport,
+    trendReport,
+    previousTotalsReport,
+    previousChannelReport,
+  ] = await Promise.all([
       client.runReport({
         property: `properties/${propertyId}`,
         dateRanges: [current],
@@ -124,6 +143,18 @@ async function fetchGa4Summary(days: number): Promise<Ga4Summary> {
           { name: "keyEvents" },
         ],
       }),
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [previous],
+        dimensions: [{ name: "sessionDefaultChannelGroup" }],
+        metrics: [
+          { name: "sessions" },
+          { name: "totalUsers" },
+          { name: "engagementRate" },
+          { name: "keyEvents" },
+        ],
+        orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+      }),
     ]);
 
   const totalsRow = totalsReport[0].rows?.[0];
@@ -152,6 +183,16 @@ async function fetchGa4Summary(days: number): Promise<Ga4Summary> {
     keyEvents: num(row.metricValues?.[3]?.value),
   }));
 
+  const previousByChannel: ChannelRow[] = (previousChannelReport[0].rows ?? []).map(
+    (row) => ({
+      channel: row.dimensionValues?.[0]?.value || "(unassigned)",
+      sessions: num(row.metricValues?.[0]?.value),
+      totalUsers: num(row.metricValues?.[1]?.value),
+      engagementRate: num(row.metricValues?.[2]?.value),
+      keyEvents: num(row.metricValues?.[3]?.value),
+    }),
+  );
+
   const trend = (trendReport[0].rows ?? []).map((row) => {
     const raw = row.dimensionValues?.[0]?.value || "";
     const date = `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
@@ -162,7 +203,7 @@ async function fetchGa4Summary(days: number): Promise<Ga4Summary> {
     };
   });
 
-  return { totals, previousTotals, byChannel, trend };
+  return { totals, previousTotals, byChannel, previousByChannel, trend };
 }
 
 export const getGa4Summary = fetchGa4Summary;
@@ -193,7 +234,7 @@ async function fetchGa4SinceDate(startDate: string): Promise<Ga4RangeSummary> {
   }
   const { client, propertyId } = conn;
 
-  const range = { startDate, endDate: isoDate(new Date()) };
+  const range = { startDate, endDate: isoDate(yesterday()) };
   const num = (v: string | null | undefined) => Number(v ?? 0);
 
   const [totalsReport, channelReport, trendReport] = await Promise.all([

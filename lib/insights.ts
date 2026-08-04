@@ -76,6 +76,7 @@ async function fetchWeeklyInsights(weekStart: string): Promise<WeeklyInsights> {
 Context:
 - Key event (conversion) tracking was only fixed on ${KEY_EVENTS_FIXED_DATE}. Key event counts before that date are unreliable/undercounted. Do not draw conclusions from key event trends unless comparing dates on/after ${KEY_EVENTS_FIXED_DATE}.
 - The company launched a new domain on ${DOMAIN_LAUNCH_DATE}.
+- All figures below cover complete days only (through yesterday) — today is deliberately excluded since it's still in progress and would look like a false drop.
 
 This week (last 7 days) vs. the 7 days before:
 - Sessions: ${week.totals.sessions} (previous: ${week.previousTotals.sessions})
@@ -89,7 +90,7 @@ This week (last 7 days) vs. the 7 days before:
     )
     .join("; ")}
 
-Since the domain launch (${DOMAIN_LAUNCH_DATE} to today):
+Since the domain launch (${DOMAIN_LAUNCH_DATE} through yesterday):
 - Total sessions: ${sinceLaunch.totals.sessions}
 - Total users: ${sinceLaunch.totals.totalUsers}
 - By channel since launch: ${sinceLaunch.byChannel
