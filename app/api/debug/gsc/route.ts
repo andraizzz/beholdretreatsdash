@@ -1,9 +1,7 @@
-import { NextResponse, connection } from "next/server";
+import { NextResponse } from "next/server";
 import { getGscSummary, isGscConfigured } from "@/lib/sources/gsc";
 
 export async function GET() {
-  await connection();
-
   if (!isGscConfigured()) {
     return NextResponse.json(
       { error: "GSC is not configured." },
