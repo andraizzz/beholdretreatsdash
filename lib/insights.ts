@@ -11,8 +11,8 @@ import {
 import { getGscSummary, isGscConfigured } from "@/lib/sources/gsc";
 
 const insightsSchema = z.object({
-  takeaways: z.array(z.string()).length(3),
-  recommendations: z.array(z.string()).length(3),
+  takeaways: z.array(z.string()).min(1).max(5),
+  recommendations: z.array(z.string()).min(1).max(5),
 });
 
 export type WeeklyInsights = z.infer<typeof insightsSchema>;
@@ -61,7 +61,9 @@ export function weekRangeLabel(weekStart: string): string {
 }
 
 async function fetchWeeklyInsights(weekStart: string): Promise<WeeklyInsights> {
-  // TEMP: debugging masked production error
+  "use cache";
+  cacheLife("weekly");
+  cacheTag("insights");
 
   const [week, sinceLaunch, gsc] = await Promise.all([
     getGa4Summary(7),
@@ -121,7 +123,10 @@ Write takeaways that identify what's actually notable (biggest movers, which cha
     prompt,
   });
 
-  return output;
+  return {
+    takeaways: output.takeaways.slice(0, 3),
+    recommendations: output.recommendations.slice(0, 3),
+  };
 }
 
 export const getWeeklyInsights = fetchWeeklyInsights;
