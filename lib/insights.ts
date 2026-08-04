@@ -22,11 +22,11 @@ export function isInsightsConfigured() {
 }
 
 async function fetchWeeklyInsights(): Promise<WeeklyInsights> {
-  "use cache";
-  cacheLife("dashboard");
-  cacheTag("ga4");
-  cacheTag("gsc");
-  cacheTag("insights");
+  // TEMP: "use cache" disabled to debug error redaction
+  // cacheLife("dashboard");
+  // cacheTag("ga4");
+  // cacheTag("gsc");
+  // cacheTag("insights");
 
   const [week, sinceLaunch, gsc] = await Promise.all([
     getGa4Summary(7),
