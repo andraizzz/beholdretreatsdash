@@ -23,7 +23,7 @@ function formatNumber(n: number) {
 
 function daysAgo(dateStr: string) {
   const ms = Date.now() - new Date(dateStr).getTime();
-  return Math.round(ms / (1000 * 60 * 60 * 24));
+  return Math.round(ms / (1000 * 60 * 60 * 24)) - 1;
 }
 
 export async function Ga4SinceLaunch() {
@@ -49,7 +49,7 @@ export async function Ga4SinceLaunch() {
       <section>
         <SectionTitle
           title="Since the new domain launched"
-          subtitle={`${DOMAIN_LAUNCH_DATE} → today (${daysAgo(DOMAIN_LAUNCH_DATE)} days)`}
+          subtitle={`${DOMAIN_LAUNCH_DATE} → yesterday (${daysAgo(DOMAIN_LAUNCH_DATE)} full days — today is excluded while it's still in progress)`}
         />
         <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
           Key event tracking was only fixed on {KEY_EVENTS_FIXED_DATE} —

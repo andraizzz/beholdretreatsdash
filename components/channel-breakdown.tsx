@@ -20,8 +20,14 @@ const COLORS = [
   "#8a9a8b",
   "#b6805c",
   "#6b7a99",
-  "#c9c3b4",
+  "#a8b5c4",
 ];
+
+const OTHER_COLOR = "#d8d5cc";
+
+// Slices below this share of traffic get folded into "Other" so the donut
+// stays readable — the list below it still itemizes every channel.
+const MIN_SLICE_SHARE = 0.02;
 
 function formatNumber(n: number) {
   return new Intl.NumberFormat("en-US").format(Math.round(n));
@@ -41,7 +47,24 @@ function statusFor(deltaPct: number | null) {
 }
 
 export function ChannelBreakdown({ rows }: { rows: ChannelBreakdownRow[] }) {
-  const chartData = rows.map((r) => ({ name: r.channel, value: r.sessions }));
+  const major = rows.filter((r) => r.share >= MIN_SLICE_SHARE);
+  const minorSessions = rows
+    .filter((r) => r.share < MIN_SLICE_SHARE)
+    .reduce((sum, r) => sum + r.sessions, 0);
+
+  const chartData = [
+    ...major.map((r, i) => ({
+      name: r.channel,
+      value: r.sessions,
+      color: COLORS[i % COLORS.length],
+    })),
+    ...(minorSessions > 0
+      ? [{ name: "Other", value: minorSessions, color: OTHER_COLOR }]
+      : []),
+  ];
+
+  const colorFor = (channel: string, index: number) =>
+    index < major.length ? COLORS[index % COLORS.length] : OTHER_COLOR;
 
   return (
     <div className="grid gap-6 md:grid-cols-[240px_1fr]">
@@ -58,8 +81,8 @@ export function ChannelBreakdown({ rows }: { rows: ChannelBreakdownRow[] }) {
               stroke="var(--background)"
               strokeWidth={2}
             >
-              {chartData.map((entry, i) => (
-                <Cell key={entry.name} fill={COLORS[i % COLORS.length]} />
+              {chartData.map((entry) => (
+                <Cell key={entry.name} fill={entry.color} />
               ))}
             </Pie>
             <Tooltip
@@ -87,7 +110,7 @@ export function ChannelBreakdown({ rows }: { rows: ChannelBreakdownRow[] }) {
             >
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                style={{ backgroundColor: colorFor(row.channel, i) }}
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
