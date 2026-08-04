@@ -104,10 +104,9 @@ async function searchAnalyticsQuery(
 }
 
 async function fetchGscSummary(days: number): Promise<GscSummary> {
-  // TEMP: "use cache" disabled to debug — Next redacts errors thrown
-  // inside cache scopes even from the caller's own try/catch.
-  // cacheLife("dashboard");
-  // cacheTag("gsc");
+  "use cache";
+  cacheLife("dashboard");
+  cacheTag("gsc");
 
   const auth = getAuthClient();
   if (!auth) {
