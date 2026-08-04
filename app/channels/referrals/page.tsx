@@ -1,18 +1,18 @@
 import { ChannelPage } from "@/components/channel-page";
 
-export default function ReferralsPage() {
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+
+export default function ReferralsPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   return (
     <ChannelPage
       channel="Referrals"
-      description="Traffic from other sites — including the Costa Rica News article backlink and any PR pickups"
-      primarySourceLabel="GA4 + GSC"
-      metrics={[
-        { label: "Referral sessions", hint: "GA4" },
-        { label: "Top referrer sessions", hint: "GA4" },
-        { label: "Applications", hint: "Attributed" },
-        { label: "Bookings", hint: "Attributed · GHL" },
-      ]}
-      detailTableLabel="Top referring sites and pages"
+      description="Traffic from other sites — PR pickups, backlinks, and partner mentions"
+      channels={["Referral"]}
+      searchParams={searchParams}
     />
   );
 }

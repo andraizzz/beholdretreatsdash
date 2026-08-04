@@ -1,18 +1,18 @@
 import { ChannelPage } from "@/components/channel-page";
 
-export default function SocialPage() {
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+
+export default function SocialPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   return (
     <ChannelPage
       channel="Social"
-      description="Instagram + Meta organic — reach, engagement, and how many applications trace back to social"
-      primarySourceLabel="Meta Graph API"
-      metrics={[
-        { label: "IG reach", hint: "Meta" },
-        { label: "Follower growth", hint: "Meta" },
-        { label: "Applications", hint: "Attributed" },
-        { label: "Bookings", hint: "Attributed · GHL" },
-      ]}
-      detailTableLabel="Top posts this week"
+      description="Traffic arriving from social platforms — Instagram, Facebook, and the rest. Post-level reach and follower growth need the Meta API, which isn't connected yet."
+      channels={["Organic Social", "Paid Social"]}
+      searchParams={searchParams}
     />
   );
 }

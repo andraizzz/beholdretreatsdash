@@ -1,21 +1,23 @@
-import { MetricCard } from "@/components/metric-card";
-import { Placeholder, SectionTitle } from "@/components/placeholder";
-import { Badge } from "@/components/ui/badge";
+import { Suspense } from "react";
+import { ChannelDetail } from "@/components/channel-detail";
+import { DateRangeSelect } from "@/components/date-range-select";
+import { Skeleton } from "@/components/ui/skeleton";
+
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 type Props = {
   channel: string;
   description: string;
-  primarySourceLabel: string;
-  metrics: { label: string; hint?: string }[];
-  detailTableLabel: string;
+  /** GA4 default channel group names that make up this page. */
+  channels: string[];
+  searchParams: SearchParams;
 };
 
 export function ChannelPage({
   channel,
   description,
-  primarySourceLabel,
-  metrics,
-  detailTableLabel,
+  channels,
+  searchParams,
 }: Props) {
   return (
     <div className="space-y-8">
@@ -24,37 +26,48 @@ export function ChannelPage({
           <h1 className="font-heading text-3xl tracking-tight">{channel}</h1>
           <p className="text-sm text-muted-foreground mt-1">{description}</p>
         </div>
-        <Badge variant="outline" className="text-xs">
-          {primarySourceLabel} not yet connected
-        </Badge>
+        <Suspense fallback={<div className="w-[160px] h-9" />}>
+          <DateRangeSelect />
+        </Suspense>
       </div>
 
-      <section>
-        <SectionTitle title="This week" subtitle="Headline metrics with week-over-week delta" />
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-          {metrics.map((m) => (
-            <MetricCard key={m.label} label={m.label} value="—" hint={m.hint} />
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <SectionTitle title="12-week trend" />
-        <Placeholder label="Trend chart" height={240} />
-      </section>
-
-      <section>
-        <SectionTitle title={detailTableLabel} />
-        <Placeholder label={detailTableLabel} height={260} />
-      </section>
-
-      <section>
-        <SectionTitle
-          title="Attributed applications"
-          subtitle="Applications where this channel was cited in 'how did you hear' or matched a UTM"
+      <Suspense fallback={<ChannelSkeleton />}>
+        <ChannelSection
+          channels={channels}
+          sourceLabel={channel}
+          searchParams={searchParams}
         />
-        <Placeholder label="Attributed applications list" height={220} />
-      </section>
+      </Suspense>
+    </div>
+  );
+}
+
+async function ChannelSection({
+  channels,
+  sourceLabel,
+  searchParams,
+}: {
+  channels: string[];
+  sourceLabel: string;
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
+  const daysParam = Array.isArray(params.days) ? params.days[0] : params.days;
+  const days = Number(daysParam) || 7;
+  return (
+    <ChannelDetail channels={channels} sourceLabel={sourceLabel} days={days} />
+  );
+}
+
+function ChannelSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24" />
+        ))}
+      </div>
+      <Skeleton className="h-64" />
     </div>
   );
 }
