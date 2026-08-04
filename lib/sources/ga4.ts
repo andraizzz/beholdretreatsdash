@@ -321,7 +321,8 @@ async function fetchGa4Channel(
         dimensions: [{ name: "landingPagePlusQueryString" }],
         metrics: [{ name: "sessions" }, { name: "keyEvents" }],
         orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
-        limit: 10,
+        // Over-fetch: click-ID variants collapse into far fewer distinct paths.
+        limit: 100,
       }),
       client.runReport({
         property: `properties/${propertyId}`,
@@ -356,13 +357,25 @@ async function fetchGa4Channel(
     keyEvents: num(row.metricValues?.[3]?.value),
   }));
 
-  const topLandingPages: LandingPageRow[] = (pagesReport[0].rows ?? []).map(
-    (row) => ({
-      page: row.dimensionValues?.[0]?.value || "(not set)",
-      sessions: num(row.metricValues?.[0]?.value),
-      keyEvents: num(row.metricValues?.[1]?.value),
-    }),
-  );
+  // Ad platforms append click IDs (fbclid, gclid, ...) to the landing URL, so
+  // the same page shows up as a dozen near-identical rows. Collapse on path.
+  const pagesByPath = new Map<string, LandingPageRow>();
+  for (const row of pagesReport[0].rows ?? []) {
+    const raw = row.dimensionValues?.[0]?.value || "(not set)";
+    const page = raw.split("?")[0] || raw;
+    const existing = pagesByPath.get(page);
+    const sessions = num(row.metricValues?.[0]?.value);
+    const keyEvents = num(row.metricValues?.[1]?.value);
+    if (existing) {
+      existing.sessions += sessions;
+      existing.keyEvents += keyEvents;
+    } else {
+      pagesByPath.set(page, { page, sessions, keyEvents });
+    }
+  }
+  const topLandingPages: LandingPageRow[] = [...pagesByPath.values()]
+    .sort((a, b) => b.sessions - a.sessions)
+    .slice(0, 10);
 
   const trend = (trendReport[0].rows ?? []).map((row) => {
     const raw = row.dimensionValues?.[0]?.value || "";
