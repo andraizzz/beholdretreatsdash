@@ -10,7 +10,7 @@ export default function SeoPage({ searchParams }: { searchParams: SearchParams }
     <div className="space-y-8">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">SEO</h1>
+          <h1 className="font-heading text-3xl tracking-tight">SEO</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Organic search — what queries and pages are driving traffic
           </p>

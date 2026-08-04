@@ -21,8 +21,8 @@ export function SessionsTrendChart({ data }: Props) {
         <AreaChart data={data}>
           <defs>
             <linearGradient id="sessions" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="var(--foreground)" stopOpacity={0.2} />
-              <stop offset="95%" stopColor="var(--foreground)" stopOpacity={0} />
+              <stop offset="5%" stopColor="#d3a95c" stopOpacity={0.35} />
+              <stop offset="95%" stopColor="#d3a95c" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -36,7 +36,7 @@ export function SessionsTrendChart({ data }: Props) {
           <Area
             type="monotone"
             dataKey="sessions"
-            stroke="var(--foreground)"
+            stroke="#be9853"
             fill="url(#sessions)"
             strokeWidth={2}
           />

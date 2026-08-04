@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { BeholdMark } from "@/components/behold-mark";
 
 const links = [
   { href: "/", label: "Overview" },
@@ -20,8 +21,11 @@ export function Nav() {
     <header className="border-b bg-background/80 backdrop-blur sticky top-0 z-40">
       <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-6">
         <div className="flex items-center gap-8">
-          <Link href="/" className="font-semibold tracking-tight text-lg">
-            Behold <span className="text-muted-foreground font-normal">Analytics</span>
+          <Link href="/" className="flex items-center gap-2">
+            <BeholdMark className="h-4 w-auto text-[#d3a95c]" />
+            <span className="font-heading text-xl tracking-tight">
+              Behold <span className="text-muted-foreground">Analytics</span>
+            </span>
           </Link>
           <nav className="flex items-center gap-1">
             {links.map((link) => {

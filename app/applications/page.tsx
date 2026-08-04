@@ -7,7 +7,7 @@ export default function ApplicationsPage() {
     <div className="space-y-8">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Applications</h1>
+          <h1 className="font-heading text-3xl tracking-tight">Applications</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Every Typeform submission, enriched with GHL pipeline stage and channel attribution
           </p>

@@ -21,7 +21,7 @@ export function ChannelPage({
     <div className="space-y-8">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{channel}</h1>
+          <h1 className="font-heading text-3xl tracking-tight">{channel}</h1>
           <p className="text-sm text-muted-foreground mt-1">{description}</p>
         </div>
         <Badge variant="outline" className="text-xs">

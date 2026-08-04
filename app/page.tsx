@@ -18,7 +18,7 @@ export default function OverviewPage({
     <div className="space-y-10">
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
+          <h1 className="font-heading text-3xl tracking-tight">Overview</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Traffic and channels from Google Analytics
           </p>

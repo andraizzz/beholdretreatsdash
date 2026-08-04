@@ -24,7 +24,7 @@ export function SectionTitle({
 }) {
   return (
     <div className="mb-4">
-      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+      <h2 className="font-heading text-xl tracking-tight">{title}</h2>
       {subtitle && (
         <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
       )}
