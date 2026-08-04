@@ -21,12 +21,49 @@ export function isInsightsConfigured() {
   return isGa4Configured();
 }
 
-async function fetchWeeklyInsights(): Promise<WeeklyInsights> {
-  "use cache";
-  cacheLife("dashboard");
-  cacheTag("ga4");
-  cacheTag("gsc");
-  cacheTag("insights");
+const REPORT_TIMEZONE = "Europe/Lisbon";
+
+/**
+ * Monday of the current week, as a wall-clock date in REPORT_TIMEZONE.
+ * Not cached — call this outside any "use cache" scope (it reads the
+ * clock) and pass the result in as an argument.
+ */
+export function getCurrentWeekStart(): string {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: REPORT_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  }).formatToParts(now);
+
+  const get = (type: string) => parts.find((p) => p.type === type)!.value;
+  const y = get("year");
+  const m = get("month");
+  const d = get("day");
+  const weekdayIndex = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(
+    get("weekday"),
+  );
+
+  const date = new Date(`${y}-${m}-${d}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - weekdayIndex);
+  return date.toISOString().slice(0, 10);
+}
+
+export function weekRangeLabel(weekStart: string): string {
+  const start = new Date(`${weekStart}T00:00:00Z`);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 6);
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+async function fetchWeeklyInsights(weekStart: string): Promise<WeeklyInsights> {
+  // TEMP: "use cache" disabled to debug error redaction
+  // cacheLife("weekly");
+  // cacheTag("insights");
 
   const [week, sinceLaunch, gsc] = await Promise.all([
     getGa4Summary(7),
@@ -34,7 +71,7 @@ async function fetchWeeklyInsights(): Promise<WeeklyInsights> {
     isGscConfigured() ? getGscSummary(7).catch(() => null) : Promise.resolve(null),
   ]);
 
-  const prompt = `You are a marketing analyst preparing a weekly report for the CEO of Behold Retreats, a retreat company. Write exactly 3 takeaways and exactly 3 recommendations based ONLY on the data below. Do not invent numbers that aren't given.
+  const prompt = `You are a marketing analyst preparing a weekly report for the CEO of Behold Retreats, a retreat company. This report covers the week of ${weekStart} (Monday) through the following Sunday. Write exactly 3 takeaways and exactly 3 recommendations based ONLY on the data below. Do not invent numbers that aren't given.
 
 Context:
 - Key event (conversion) tracking was only fixed on ${KEY_EVENTS_FIXED_DATE}. Key event counts before that date are unreliable/undercounted. Do not draw conclusions from key event trends unless comparing dates on/after ${KEY_EVENTS_FIXED_DATE}.

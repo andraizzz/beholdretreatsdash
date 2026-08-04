@@ -25,7 +25,7 @@ function formatNumber(n: number) {
   return new Intl.NumberFormat("en-US").format(Math.round(n));
 }
 
-export async function Ga4Overview() {
+export async function Ga4Overview({ days = 7 }: { days?: number }) {
   await connection();
 
   if (!isGa4Configured()) {
@@ -39,7 +39,7 @@ export async function Ga4Overview() {
 
   let summary;
   try {
-    summary = await getGa4Summary(7);
+    summary = await getGa4Summary(days);
   } catch (error) {
     return (
       <div className="rounded-md border border-dashed border-red-300 p-6 text-sm text-red-600">
