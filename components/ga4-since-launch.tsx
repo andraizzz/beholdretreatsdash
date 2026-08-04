@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SessionsTrendChart } from "@/components/sessions-trend-chart";
+import { connection } from "next/server";
 
 function formatNumber(n: number) {
   return new Intl.NumberFormat("en-US").format(Math.round(n));
@@ -27,6 +28,7 @@ function daysAgo(dateStr: string) {
 
 export async function Ga4SinceLaunch() {
   if (!isGa4Configured()) return null;
+  await connection();
 
   let summary;
   try {
