@@ -135,16 +135,29 @@ This self-reported data is a useful cross-check on GA4. GA4 measures what the br
 }
 Write takeaways that identify what's actually notable (biggest movers, which channels are working vs underperforming, anything odd about the domain migration, and any sharp disagreement between GA4 traffic and what applicants self-report). Write recommendations that are concrete and actionable for improving traffic, applications, or SEO next week. Keep each bullet to one or two sentences, plain English, no jargon, no bullet symbols in the text itself.`;
 
-  const { output } = await generateText({
-    model: "anthropic/claude-sonnet-5",
-    output: Output.object({ schema: insightsSchema }),
-    prompt,
-  });
-
-  return {
-    takeaways: output.takeaways.slice(0, 3),
-    recommendations: output.recommendations.slice(0, 3),
-  };
+  // This result is cached for the whole calendar week (see cacheLife above),
+  // so a single malformed generation would otherwise lock the week's
+  // takeaways behind an error until someone manually busts the cache.
+  // Retry a couple of times before giving up — errors aren't cached, only
+  // successful returns are, so a later request would retry anyway; this
+  // just avoids surfacing a transient failure to whoever loads the page.
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const { output } = await generateText({
+        model: "anthropic/claude-sonnet-5",
+        output: Output.object({ schema: insightsSchema }),
+        prompt,
+      });
+      return {
+        takeaways: output.takeaways.slice(0, 3),
+        recommendations: output.recommendations.slice(0, 3),
+      };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
 export const getWeeklyInsights = fetchWeeklyInsights;
