@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Ga4Overview } from "@/components/ga4-overview";
 import { Ga4SinceLaunch } from "@/components/ga4-since-launch";
+import { WeeklyInsights } from "@/components/weekly-insights";
 import { RefreshButton } from "@/components/refresh-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -18,6 +19,10 @@ export default function OverviewPage() {
         <RefreshButton />
       </div>
 
+      <Suspense fallback={<InsightsSkeleton />}>
+        <WeeklyInsights />
+      </Suspense>
+
       <Suspense fallback={<OverviewSkeleton />}>
         <Ga4Overview />
       </Suspense>
@@ -27,6 +32,15 @@ export default function OverviewPage() {
       <Suspense fallback={<OverviewSkeleton />}>
         <Ga4SinceLaunch />
       </Suspense>
+    </div>
+  );
+}
+
+function InsightsSkeleton() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Skeleton className="h-40" />
+      <Skeleton className="h-40" />
     </div>
   );
 }
