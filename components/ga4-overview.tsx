@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SessionsTrendChart } from "@/components/sessions-trend-chart";
+import { connection } from "next/server";
 
 function pctDelta(current: number, previous: number) {
   if (previous === 0) return current === 0 ? 0 : 100;
@@ -25,6 +26,8 @@ function formatNumber(n: number) {
 }
 
 export async function Ga4Overview() {
+  await connection();
+
   if (!isGa4Configured()) {
     return (
       <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">

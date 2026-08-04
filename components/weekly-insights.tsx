@@ -1,7 +1,10 @@
 import { getWeeklyInsights, isInsightsConfigured } from "@/lib/insights";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { connection } from "next/server";
 
 export async function WeeklyInsights() {
+  await connection();
+
   if (!isInsightsConfigured()) return null;
 
   let insights;
