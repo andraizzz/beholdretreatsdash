@@ -9,6 +9,7 @@ import {
   KEY_EVENTS_FIXED_DATE,
 } from "@/lib/sources/ga4";
 import { getGscSummary, isGscConfigured } from "@/lib/sources/gsc";
+import { getTypeformSources, isTypeformConfigured } from "@/lib/sources/typeform";
 
 const insightsSchema = z.object({
   takeaways: z.array(z.string()).min(1).max(5),
@@ -65,10 +66,13 @@ async function fetchWeeklyInsights(weekStart: string): Promise<WeeklyInsights> {
   cacheLife("weekly");
   cacheTag("insights");
 
-  const [week, sinceLaunch, gsc] = await Promise.all([
+  const [week, sinceLaunch, gsc, typeform] = await Promise.all([
     getGa4Summary(7),
     getGa4SinceLaunch(),
     isGscConfigured() ? getGscSummary(7).catch(() => null) : Promise.resolve(null),
+    isTypeformConfigured()
+      ? getTypeformSources(7).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   const prompt = `You are a marketing analyst preparing a weekly report for the CEO of Behold Retreats, a retreat company. This report covers the week of ${weekStart} (Monday) through the following Sunday. Write exactly 3 takeaways and exactly 3 recommendations based ONLY on the data below. Do not invent numbers that aren't given.
@@ -114,8 +118,22 @@ Search Console, last 7 days (site: ${gsc.siteUrl}):
         .join("; ")}
 `
     : ""
+}${
+  typeform
+    ? `
+Application form, last 7 days — what applicants SAY when asked "How did you hear about Behold Retreats?" (${typeform.total} applicants answered, vs ${typeform.previousTotal} the week before):
+${typeform.rows
+        .map(
+          (r) =>
+            `- ${r.label}: ${r.count} (${(r.share * 100).toFixed(0)}% of applicants, was ${r.previousCount} last week)`,
+        )
+        .join("\n")}
+
+This self-reported data is a useful cross-check on GA4. GA4 measures what the browser reports; this measures what people say. Where the two disagree sharply, treat that as a signal worth calling out — a channel with lots of GA4 sessions but no applicants citing it may be misattributed traffic rather than real demand.
+`
+    : ""
 }
-Write takeaways that identify what's actually notable (biggest movers, which channels are working vs underperforming, anything odd about the domain migration). Write recommendations that are concrete and actionable for improving traffic, applications, or SEO next week. Keep each bullet to one or two sentences, plain English, no jargon, no bullet symbols in the text itself.`;
+Write takeaways that identify what's actually notable (biggest movers, which channels are working vs underperforming, anything odd about the domain migration, and any sharp disagreement between GA4 traffic and what applicants self-report). Write recommendations that are concrete and actionable for improving traffic, applications, or SEO next week. Keep each bullet to one or two sentences, plain English, no jargon, no bullet symbols in the text itself.`;
 
   const { output } = await generateText({
     model: "anthropic/claude-sonnet-5",

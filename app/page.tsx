@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Ga4Overview } from "@/components/ga4-overview";
 import { Ga4SinceLaunch } from "@/components/ga4-since-launch";
+import { ApplicationSources } from "@/components/application-sources";
 import { WeeklyInsights } from "@/components/weekly-insights";
 import { RefreshButton } from "@/components/refresh-button";
 import { DateRangeSelect } from "@/components/date-range-select";
@@ -42,6 +43,12 @@ export default function OverviewPage({
       <Separator />
 
       <Suspense fallback={<OverviewSkeleton />}>
+        <ApplicationSourcesSection searchParams={searchParams} />
+      </Suspense>
+
+      <Separator />
+
+      <Suspense fallback={<OverviewSkeleton />}>
         <Ga4SinceLaunch />
       </Suspense>
     </div>
@@ -53,6 +60,17 @@ async function Ga4OverviewSection({ searchParams }: { searchParams: SearchParams
   const daysParam = Array.isArray(params.days) ? params.days[0] : params.days;
   const days = Number(daysParam) || 7;
   return <Ga4Overview days={days} />;
+}
+
+async function ApplicationSourcesSection({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
+  const daysParam = Array.isArray(params.days) ? params.days[0] : params.days;
+  const days = Number(daysParam) || 7;
+  return <ApplicationSources days={days} />;
 }
 
 function InsightsSkeleton() {
