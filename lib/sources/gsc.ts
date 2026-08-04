@@ -26,6 +26,15 @@ function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
+function normalizeSiteUrl(url: string) {
+  return url
+    .replace(/^sc-domain:/, "")
+    .replace(/^https?:\/\//, "")
+    .replace(/\/$/, "")
+    .replace(/-/g, "")
+    .toLowerCase();
+}
+
 async function resolveSiteUrl(auth: JWT): Promise<string> {
   const configured = process.env.GSC_SITE_URL;
   if (configured) return configured;
@@ -34,8 +43,8 @@ async function resolveSiteUrl(auth: JWT): Promise<string> {
     url: "https://www.googleapis.com/webmasters/v3/sites",
   });
   const sites = res.data.siteEntry ?? [];
-  const match = sites.find((s) =>
-    s.siteUrl.includes("beholdretreats.com"),
+  const match = sites.find(
+    (s) => normalizeSiteUrl(s.siteUrl) === "beholdretreats.com",
   );
   if (!match) {
     throw new Error(

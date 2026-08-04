@@ -8,6 +8,7 @@ import {
   DOMAIN_LAUNCH_DATE,
   KEY_EVENTS_FIXED_DATE,
 } from "@/lib/sources/ga4";
+import { getGscSummary, isGscConfigured } from "@/lib/sources/gsc";
 
 const insightsSchema = z.object({
   takeaways: z.array(z.string()).length(3),
@@ -24,11 +25,13 @@ async function fetchWeeklyInsights(): Promise<WeeklyInsights> {
   "use cache";
   cacheLife("dashboard");
   cacheTag("ga4");
+  cacheTag("gsc");
   cacheTag("insights");
 
-  const [week, sinceLaunch] = await Promise.all([
+  const [week, sinceLaunch, gsc] = await Promise.all([
     getGa4Summary(7),
     getGa4SinceLaunch(),
+    isGscConfigured() ? getGscSummary(7).catch(() => null) : Promise.resolve(null),
   ]);
 
   const prompt = `You are a marketing analyst preparing a weekly report for the CEO of Behold Retreats, a retreat company. Write exactly 3 takeaways and exactly 3 recommendations based ONLY on the data below. Do not invent numbers that aren't given.
@@ -58,7 +61,22 @@ Since the domain launch (${DOMAIN_LAUNCH_DATE} to today):
 - Daily sessions trend since launch: ${sinceLaunch.trend
     .map((d) => `${d.date}: ${d.sessions}`)
     .join(", ")}
-
+${
+  gsc
+    ? `
+Search Console, last 7 days (site: ${gsc.siteUrl}):
+- Clicks: ${gsc.totals.clicks}, Impressions: ${gsc.totals.impressions}, Avg CTR: ${(gsc.totals.ctr * 100).toFixed(1)}%, Avg position: ${gsc.totals.position.toFixed(1)}
+- Top queries: ${gsc.topQueries
+        .slice(0, 5)
+        .map((q) => `"${q.query}" (${q.clicks} clicks, position ${q.position.toFixed(1)})`)
+        .join("; ")}
+- Top landing pages: ${gsc.topPages
+        .slice(0, 5)
+        .map((p) => `${p.page} (${p.clicks} clicks)`)
+        .join("; ")}
+`
+    : ""
+}
 Write takeaways that identify what's actually notable (biggest movers, which channels are working vs underperforming, anything odd about the domain migration). Write recommendations that are concrete and actionable for improving traffic, applications, or SEO next week. Keep each bullet to one or two sentences, plain English, no jargon, no bullet symbols in the text itself.`;
 
   const { output } = await generateText({
