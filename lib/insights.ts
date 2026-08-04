@@ -61,9 +61,7 @@ export function weekRangeLabel(weekStart: string): string {
 }
 
 async function fetchWeeklyInsights(weekStart: string): Promise<WeeklyInsights> {
-  "use cache";
-  cacheLife("weekly");
-  cacheTag("insights");
+  // TEMP: debugging masked production error
 
   const [week, sinceLaunch, gsc] = await Promise.all([
     getGa4Summary(7),
