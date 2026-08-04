@@ -30,8 +30,8 @@ function normalizeSiteUrl(url: string) {
   return url
     .replace(/^sc-domain:/, "")
     .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
     .replace(/\/$/, "")
-    .replace(/-/g, "")
     .toLowerCase();
 }
 
