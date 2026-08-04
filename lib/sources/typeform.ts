@@ -54,13 +54,21 @@ type TypeformAnswer = {
 };
 
 type TypeformResponse = {
+  submitted_at?: string;
   answers?: TypeformAnswer[] | null;
 };
 
-async function fetchResponseCounts(
+type RawResponse = { submittedAt: string; label: string | null };
+
+/**
+ * Single point of contact with the Typeform API. Only requests the one
+ * field (and only responses that answered it), so no applicant name, phone
+ * number, or health-related answer is ever pulled over the wire.
+ */
+async function fetchRawResponses(
   since: string,
   until: string,
-): Promise<Map<string, number>> {
+): Promise<RawResponse[]> {
   const token = process.env.TYPEFORM_TOKEN;
   if (!token) {
     throw new Error("Typeform is not configured");
@@ -72,8 +80,6 @@ async function fetchResponseCounts(
   url.searchParams.set("since", since);
   url.searchParams.set("until", until);
   url.searchParams.set("page_size", "1000");
-  // Only responses that actually answered Q11, and only that answer in the
-  // payload — keeps the response small and avoids pulling applicant PII.
   url.searchParams.set("answered_fields", HEARD_ABOUT_FIELD_ID);
   url.searchParams.set("fields", HEARD_ABOUT_FIELD_ID);
 
@@ -93,16 +99,23 @@ async function fetchResponseCounts(
     items?: TypeformResponse[] | null;
   };
 
-  const counts = new Map<string, number>();
-  for (const item of data.items ?? []) {
-    for (const answer of item.answers ?? []) {
-      if (answer.field?.id !== HEARD_ABOUT_FIELD_ID) continue;
-      const label = answer.choice?.label ?? answer.choice?.other;
-      if (!label) continue;
-      counts.set(label, (counts.get(label) ?? 0) + 1);
-    }
-  }
+  return (data.items ?? []).map((item) => {
+    const answer = item.answers?.find(
+      (a) => a.field?.id === HEARD_ABOUT_FIELD_ID,
+    );
+    return {
+      submittedAt: item.submitted_at ?? "",
+      label: answer?.choice?.label ?? answer?.choice?.other ?? null,
+    };
+  });
+}
 
+function countByLabel(items: RawResponse[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    if (!item.label) continue;
+    counts.set(item.label, (counts.get(item.label) ?? 0) + 1);
+  }
   return counts;
 }
 
@@ -128,10 +141,12 @@ async function fetchTypeformSources(
     until: `${isoDate(prevEnd)}T23:59:59Z`,
   };
 
-  const [counts, prevCounts] = await Promise.all([
-    fetchResponseCounts(current.since, current.until),
-    fetchResponseCounts(previous.since, previous.until),
+  const [currentItems, prevItems] = await Promise.all([
+    fetchRawResponses(current.since, current.until),
+    fetchRawResponses(previous.since, previous.until),
   ]);
+  const counts = countByLabel(currentItems);
+  const prevCounts = countByLabel(prevItems);
 
   const total = [...counts.values()].reduce((a, b) => a + b, 0);
   const previousTotal = [...prevCounts.values()].reduce((a, b) => a + b, 0);
@@ -153,3 +168,37 @@ async function fetchTypeformSources(
 }
 
 export const getTypeformSources = fetchTypeformSources;
+
+export type ApplicationTrendPoint = { date: string; count: number };
+
+async function fetchTypeformTrend(
+  days: number,
+): Promise<ApplicationTrendPoint[]> {
+  "use cache";
+  cacheLife("dashboard");
+  cacheTag("typeform");
+
+  const { since, until } = windowForLastNDays(days);
+  const items = await fetchRawResponses(since, until);
+
+  const byDay = new Map<string, number>();
+  for (const item of items) {
+    if (!item.submittedAt) continue;
+    const date = item.submittedAt.slice(0, 10);
+    byDay.set(date, (byDay.get(date) ?? 0) + 1);
+  }
+
+  // Fill every day in the window, including zero-count days, so the chart
+  // doesn't silently skip a day with no applications.
+  const points: ApplicationTrendPoint[] = [];
+  const cursor = new Date(`${since.slice(0, 10)}T00:00:00Z`);
+  const end = new Date(`${until.slice(0, 10)}T00:00:00Z`);
+  while (cursor <= end) {
+    const date = isoDate(cursor);
+    points.push({ date, count: byDay.get(date) ?? 0 });
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return points;
+}
+
+export const getTypeformTrend = fetchTypeformTrend;
