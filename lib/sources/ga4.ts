@@ -166,3 +166,97 @@ async function fetchGa4Summary(days: number): Promise<Ga4Summary> {
 }
 
 export const getGa4Summary = fetchGa4Summary;
+
+export const DOMAIN_LAUNCH_DATE = "2026-07-14";
+export const KEY_EVENTS_FIXED_DATE = "2026-08-04";
+
+export type Ga4RangeSummary = {
+  totals: {
+    sessions: number;
+    totalUsers: number;
+    activeUsers: number;
+    engagementRate: number;
+    keyEvents: number;
+  };
+  byChannel: ChannelRow[];
+  trend: { date: string; sessions: number; keyEvents: number }[];
+};
+
+async function fetchGa4SinceDate(startDate: string): Promise<Ga4RangeSummary> {
+  "use cache";
+  cacheLife("dashboard");
+  cacheTag("ga4");
+
+  const conn = getClient();
+  if (!conn) {
+    throw new Error("GA4 is not configured");
+  }
+  const { client, propertyId } = conn;
+
+  const range = { startDate, endDate: isoDate(new Date()) };
+  const num = (v: string | null | undefined) => Number(v ?? 0);
+
+  const [totalsReport, channelReport, trendReport] = await Promise.all([
+    client.runReport({
+      property: `properties/${propertyId}`,
+      dateRanges: [range],
+      metrics: [
+        { name: "sessions" },
+        { name: "totalUsers" },
+        { name: "activeUsers" },
+        { name: "engagementRate" },
+        { name: "keyEvents" },
+      ],
+    }),
+    client.runReport({
+      property: `properties/${propertyId}`,
+      dateRanges: [range],
+      dimensions: [{ name: "sessionDefaultChannelGroup" }],
+      metrics: [
+        { name: "sessions" },
+        { name: "totalUsers" },
+        { name: "engagementRate" },
+        { name: "keyEvents" },
+      ],
+      orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+    }),
+    client.runReport({
+      property: `properties/${propertyId}`,
+      dateRanges: [range],
+      dimensions: [{ name: "date" }],
+      metrics: [{ name: "sessions" }, { name: "keyEvents" }],
+      orderBys: [{ dimension: { dimensionName: "date" } }],
+    }),
+  ]);
+
+  const totalsRow = totalsReport[0].rows?.[0];
+  const totals = {
+    sessions: num(totalsRow?.metricValues?.[0]?.value),
+    totalUsers: num(totalsRow?.metricValues?.[1]?.value),
+    activeUsers: num(totalsRow?.metricValues?.[2]?.value),
+    engagementRate: num(totalsRow?.metricValues?.[3]?.value),
+    keyEvents: num(totalsRow?.metricValues?.[4]?.value),
+  };
+
+  const byChannel: ChannelRow[] = (channelReport[0].rows ?? []).map((row) => ({
+    channel: row.dimensionValues?.[0]?.value || "(unassigned)",
+    sessions: num(row.metricValues?.[0]?.value),
+    totalUsers: num(row.metricValues?.[1]?.value),
+    engagementRate: num(row.metricValues?.[2]?.value),
+    keyEvents: num(row.metricValues?.[3]?.value),
+  }));
+
+  const trend = (trendReport[0].rows ?? []).map((row) => {
+    const raw = row.dimensionValues?.[0]?.value || "";
+    const date = `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+    return {
+      date,
+      sessions: num(row.metricValues?.[0]?.value),
+      keyEvents: num(row.metricValues?.[1]?.value),
+    };
+  });
+
+  return { totals, byChannel, trend };
+}
+
+export const getGa4SinceLaunch = () => fetchGa4SinceDate(DOMAIN_LAUNCH_DATE);

@@ -1,6 +1,7 @@
 import {
-  getGa4Summary,
+  getGa4SinceLaunch,
   isGa4Configured,
+  DOMAIN_LAUNCH_DATE,
   KEY_EVENTS_FIXED_DATE,
 } from "@/lib/sources/ga4";
 import { MetricCard } from "@/components/metric-card";
@@ -15,28 +16,21 @@ import {
 } from "@/components/ui/table";
 import { SessionsTrendChart } from "@/components/sessions-trend-chart";
 
-function pctDelta(current: number, previous: number) {
-  if (previous === 0) return current === 0 ? 0 : 100;
-  return Math.round(((current - previous) / previous) * 1000) / 10;
-}
-
 function formatNumber(n: number) {
   return new Intl.NumberFormat("en-US").format(Math.round(n));
 }
 
-export async function Ga4Overview() {
-  if (!isGa4Configured()) {
-    return (
-      <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
-        GA4 isn&apos;t connected yet. Set <code>GA4_PROPERTY_ID</code> and{" "}
-        <code>GA4_SERVICE_ACCOUNT_KEY_BASE64</code> to see live traffic here.
-      </div>
-    );
-  }
+function daysAgo(dateStr: string) {
+  const ms = Date.now() - new Date(dateStr).getTime();
+  return Math.round(ms / (1000 * 60 * 60 * 24));
+}
+
+export async function Ga4SinceLaunch() {
+  if (!isGa4Configured()) return null;
 
   let summary;
   try {
-    summary = await getGa4Summary(7);
+    summary = await getGa4SinceLaunch();
   } catch (error) {
     return (
       <div className="rounded-md border border-dashed border-red-300 p-6 text-sm text-red-600">
@@ -46,28 +40,22 @@ export async function Ga4Overview() {
     );
   }
 
-  const { totals, previousTotals, byChannel, trend } = summary;
+  const { totals, byChannel, trend } = summary;
 
   return (
     <div className="space-y-8">
       <section>
         <SectionTitle
-          title="This week"
-          subtitle="Last 7 days vs. the 7 days before that"
+          title="Since the new domain launched"
+          subtitle={`${DOMAIN_LAUNCH_DATE} → today (${daysAgo(DOMAIN_LAUNCH_DATE)} days)`}
         />
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          Key event tracking was only fixed on {KEY_EVENTS_FIXED_DATE} —
+          key event counts before that date are unreliable and likely undercounted.
+        </div>
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-          <MetricCard
-            label="Sessions"
-            value={formatNumber(totals.sessions)}
-            delta={{ value: pctDelta(totals.sessions, previousTotals.sessions) }}
-          />
-          <MetricCard
-            label="Users"
-            value={formatNumber(totals.totalUsers)}
-            delta={{
-              value: pctDelta(totals.totalUsers, previousTotals.totalUsers),
-            }}
-          />
+          <MetricCard label="Sessions" value={formatNumber(totals.sessions)} />
+          <MetricCard label="Users" value={formatNumber(totals.totalUsers)} />
           <MetricCard
             label="Engagement rate"
             value={`${(totals.engagementRate * 100).toFixed(1)}%`}
@@ -75,15 +63,15 @@ export async function Ga4Overview() {
           <MetricCard
             label="Key events"
             value={formatNumber(totals.keyEvents)}
-            hint={`tracking fixed ${KEY_EVENTS_FIXED_DATE} — no WoW yet`}
+            hint="unreliable before Aug 4"
           />
         </div>
       </section>
 
       <section>
         <SectionTitle
-          title="Traffic by channel"
-          subtitle="Which channels are driving sessions and key events this week"
+          title="Traffic by channel since launch"
+          subtitle="Which channels have driven traffic since the domain move"
         />
         <div className="rounded-md border">
           <Table>
@@ -93,7 +81,6 @@ export async function Ga4Overview() {
                 <TableHead className="text-right">Sessions</TableHead>
                 <TableHead className="text-right">Users</TableHead>
                 <TableHead className="text-right">Engagement</TableHead>
-                <TableHead className="text-right">Key events</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -109,9 +96,6 @@ export async function Ga4Overview() {
                   <TableCell className="text-right">
                     {(row.engagementRate * 100).toFixed(1)}%
                   </TableCell>
-                  <TableCell className="text-right">
-                    {formatNumber(row.keyEvents)}
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -120,7 +104,7 @@ export async function Ga4Overview() {
       </section>
 
       <section>
-        <SectionTitle title="Daily trend" subtitle="Sessions and key events, last 7 days" />
+        <SectionTitle title="Daily sessions since launch" />
         <SessionsTrendChart data={trend} />
       </section>
     </div>
