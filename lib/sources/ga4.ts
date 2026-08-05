@@ -76,6 +76,8 @@ export type Ga4Summary = {
   };
   byChannel: ChannelRow[];
   previousByChannel: ChannelRow[];
+  /** The single biggest traffic source feeding each channel group, by sessions. */
+  topSourceByChannel: { channel: string; source: string; sessions: number }[];
   trend: { date: string; sessions: number; keyEvents: number }[];
 };
 
@@ -103,6 +105,7 @@ async function fetchGa4Summary(days: number): Promise<Ga4Summary> {
     trendReport,
     previousTotalsReport,
     previousChannelReport,
+    channelSourceReport,
   ] = await Promise.all([
       client.runReport({
         property: `properties/${propertyId}`,
@@ -155,6 +158,17 @@ async function fetchGa4Summary(days: number): Promise<Ga4Summary> {
         ],
         orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
       }),
+      client.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [current],
+        dimensions: [
+          { name: "sessionDefaultChannelGroup" },
+          { name: "sessionSource" },
+        ],
+        metrics: [{ name: "sessions" }],
+        orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+        limit: 500,
+      }),
     ]);
 
   const totalsRow = totalsReport[0].rows?.[0];
@@ -203,13 +217,38 @@ async function fetchGa4Summary(days: number): Promise<Ga4Summary> {
     };
   });
 
-  return { totals, previousTotals, byChannel, previousByChannel, trend };
+  // Rows are already sorted by sessions desc across all channel+source pairs,
+  // so the first time we see a channel is its single biggest source.
+  const topSourceByChannel: Ga4Summary["topSourceByChannel"] = [];
+  const seenChannels = new Set<string>();
+  for (const row of channelSourceReport[0].rows ?? []) {
+    const channel = row.dimensionValues?.[0]?.value || "(unassigned)";
+    if (seenChannels.has(channel)) continue;
+    seenChannels.add(channel);
+    topSourceByChannel.push({
+      channel,
+      source: row.dimensionValues?.[1]?.value || "(not set)",
+      sessions: num(row.metricValues?.[0]?.value),
+    });
+  }
+
+  return {
+    totals,
+    previousTotals,
+    byChannel,
+    previousByChannel,
+    topSourceByChannel,
+    trend,
+  };
 }
 
 export const getGa4Summary = fetchGa4Summary;
 
 export const DOMAIN_LAUNCH_DATE = "2026-07-14";
 export const KEY_EVENTS_FIXED_DATE = "2026-08-04";
+
+/** The site's own domains — a "top source" matching one of these is a self-referral, not real inbound traffic. */
+export const SITE_DOMAINS = ["beholdretreats.com", "behold-retreats.com"];
 
 export type SourceRow = {
   source: string;

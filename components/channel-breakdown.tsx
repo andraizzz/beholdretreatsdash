@@ -12,6 +12,7 @@ export type ChannelBreakdownRow = {
   deltaPct: number | null;
   engagementRate: number;
   keyEvents: number;
+  topSource: { source: string; sessions: number; isSelfReferral: boolean } | null;
 };
 
 const COLORS = [
@@ -100,14 +101,11 @@ export function ChannelBreakdown({ rows }: { rows: ChannelBreakdownRow[] }) {
         </ResponsiveContainer>
       </div>
 
-      <div className="divide-y">
+      <div className="divide-y max-w-xl">
         {rows.map((row, i) => {
           const status = statusFor(row.deltaPct);
           return (
-            <div
-              key={row.channel}
-              className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
-            >
+            <div key={row.channel} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: colorFor(row.channel, i) }}
@@ -135,6 +133,21 @@ export function ChannelBreakdown({ rows }: { rows: ChannelBreakdownRow[] }) {
                   {(row.share * 100).toFixed(0)}% of traffic ·{" "}
                   {row.keyEvents} key event{row.keyEvents === 1 ? "" : "s"}
                 </div>
+                {row.topSource && (
+                  <div className="text-xs mt-0.5 flex items-center gap-1">
+                    <span className="text-muted-foreground">
+                      top source: {row.topSource.source}
+                    </span>
+                    {row.topSource.isSelfReferral && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] border-amber-200 bg-amber-50 text-amber-700"
+                      >
+                        self-referral
+                      </Badge>
+                    )}
+                  </div>
+                )}
               </div>
               <div
                 className={cn(

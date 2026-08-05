@@ -2,6 +2,7 @@ import {
   getGa4Summary,
   isGa4Configured,
   KEY_EVENTS_FIXED_DATE,
+  SITE_DOMAINS,
 } from "@/lib/sources/ga4";
 import { MetricCard } from "@/components/metric-card";
 import { SectionTitle } from "@/components/placeholder";
@@ -42,14 +43,17 @@ export async function Ga4Overview({ days = 7 }: { days?: number }) {
     );
   }
 
-  const { totals, previousTotals, byChannel, previousByChannel, trend } = summary;
+  const { totals, previousTotals, byChannel, previousByChannel, topSourceByChannel, trend } =
+    summary;
 
   const previousByChannelMap = new Map(
     previousByChannel.map((c) => [c.channel, c]),
   );
+  const topSourceMap = new Map(topSourceByChannel.map((s) => [s.channel, s]));
   const totalSessions = byChannel.reduce((sum, c) => sum + c.sessions, 0);
   const channelRows: ChannelBreakdownRow[] = byChannel.map((c) => {
     const prev = previousByChannelMap.get(c.channel);
+    const top = topSourceMap.get(c.channel);
     return {
       channel: c.channel,
       sessions: c.sessions,
@@ -58,6 +62,14 @@ export async function Ga4Overview({ days = 7 }: { days?: number }) {
       deltaPct: prev ? pctDelta(c.sessions, prev.sessions) : null,
       engagementRate: c.engagementRate,
       keyEvents: c.keyEvents,
+      topSource:
+        top && top.source !== "(direct)" && top.source !== "(not set)"
+          ? {
+              source: top.source,
+              sessions: top.sessions,
+              isSelfReferral: SITE_DOMAINS.some((d) => top.source.includes(d)),
+            }
+          : null,
     };
   });
 
