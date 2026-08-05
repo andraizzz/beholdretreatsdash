@@ -62,7 +62,12 @@ export function weekRangeLabel(weekStart: string): string {
 }
 
 async function fetchWeeklyInsights(weekStart: string): Promise<WeeklyInsights> {
-  "use cache";
+  // "use cache" alone is per-instance in-memory on Vercel — with Fluid
+  // Compute spinning up fresh instances for low-traffic routes, that meant
+  // this was regenerating (and re-billing the AI Gateway call) on close to
+  // every request instead of once a week. "remote" stores the entry in
+  // Vercel's distributed Runtime Cache so it's actually shared.
+  "use cache: remote";
   cacheLife("weekly");
   cacheTag("insights");
 
