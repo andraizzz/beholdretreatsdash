@@ -8,28 +8,41 @@ const COMPETITORS = [
   { name: "Behold Retreats", query: "Behold Retreats, Costa Rica" },
   { name: "Soltara Healing Center", query: "Soltara Healing Center, Costa Rica" },
   { name: "Rythmia Life Advancement Center", query: "Rythmia Life Advancement Center, Costa Rica" },
+  { name: "New Life Ayahuasca", query: "New Life Ayahuasca, Costa Rica" },
+  { name: "Posada Natura", query: "Posada Natura, Costa Rica" },
+  { name: "Florestral", query: "Florestral, Diamante Valley, Costa Rica" },
 ] as const;
 
 export type CompetitorReputation = {
   name: string;
   rating: number | null;
   reviewCount: number | null;
+  /** What the Places API actually matched — sanity-check against `name`. */
+  matchedName: string | null;
 };
 
 type SearchTextResponse = {
-  places?: { rating?: number; userRatingCount?: number }[];
+  places?: {
+    rating?: number;
+    userRatingCount?: number;
+    displayName?: { text?: string };
+  }[];
 };
 
 async function lookupOne(
   apiKey: string,
   query: string,
-): Promise<{ rating: number | null; reviewCount: number | null }> {
+): Promise<{
+  rating: number | null;
+  reviewCount: number | null;
+  matchedName: string | null;
+}> {
   const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "places.rating,places.userRatingCount",
+      "X-Goog-FieldMask": "places.rating,places.userRatingCount,places.displayName",
     },
     body: JSON.stringify({ textQuery: query }),
   });
@@ -46,6 +59,7 @@ async function lookupOne(
   return {
     rating: top?.rating ?? null,
     reviewCount: top?.userRatingCount ?? null,
+    matchedName: top?.displayName?.text ?? null,
   };
 }
 
