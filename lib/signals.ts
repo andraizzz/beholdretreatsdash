@@ -20,6 +20,23 @@ export type Signal = {
 
 const MIN_SESSIONS_FOR_SIGNAL = 5;
 
+/**
+ * GA4 channels that aren't real actionable channels — bucketing them into
+ * the "biggest positive signal" tile would surface unactionable text like
+ * "Unassigned up 4660%" (Unassigned is GA4's junk bucket for traffic where
+ * the source couldn't be determined; you can't "double down on Unassigned").
+ */
+const NON_ACTIONABLE_CHANNELS = new Set([
+  "Unassigned",
+  "(unassigned)",
+  "(other)",
+  "Direct",
+]);
+
+function isActionable(channel: string): boolean {
+  return !NON_ACTIONABLE_CHANNELS.has(channel);
+}
+
 function avg(nums: number[]): number {
   if (nums.length === 0) return 0;
   return nums.reduce((a, b) => a + b, 0) / nums.length;
@@ -45,6 +62,7 @@ export function pickPositiveSignal(rolling: Ga4RollingSummary): Signal | null {
     })
     .filter(
       (c) =>
+        isActionable(c.channel) &&
         c.current >= MIN_SESSIONS_FOR_SIGNAL &&
         c.pct !== null &&
         c.pct > 0,
@@ -82,6 +100,7 @@ export function pickFixSignal(
     })
     .filter(
       (c) =>
+        isActionable(c.channel) &&
         c.baseline >= MIN_SESSIONS_FOR_SIGNAL &&
         c.pct !== null &&
         c.pct < 0,
