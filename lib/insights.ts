@@ -83,7 +83,7 @@ async function fetchWeeklyInsights(weekStart: string): Promise<WeeklyInsights> {
   const prompt = `You are a marketing analyst preparing a weekly report for the CEO of Behold Retreats, a retreat company. This report covers the week of ${weekStart} (Monday) through the following Sunday. Write exactly 3 takeaways and exactly 3 recommendations based ONLY on the data below. Do not invent numbers that aren't given.
 
 Context:
-- Key event (conversion) tracking was only fixed on ${KEY_EVENTS_FIXED_DATE}. Key event counts before that date are unreliable/undercounted. Do not draw conclusions from key event trends unless comparing dates on/after ${KEY_EVENTS_FIXED_DATE}.
+- GA4 key event (conversion) tracking has been broken repeatedly; the most recent fix attempt was ${KEY_EVENTS_FIXED_DATE} and it's not yet verified working. Treat GA4 key event counts as UNRELIABLE. Applications count in this report comes from Typeform (trustworthy); if GA4 key events disagree sharply with Typeform application counts, believe Typeform.
 - The company launched a new domain on ${DOMAIN_LAUNCH_DATE}.
 - All figures below cover complete days only (through yesterday) — today is deliberately excluded since it's still in progress and would look like a false drop.
 

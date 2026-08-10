@@ -52,8 +52,12 @@ export async function Ga4SinceLaunch() {
           subtitle={`${DOMAIN_LAUNCH_DATE} → yesterday (${daysAgo(DOMAIN_LAUNCH_DATE)} full days — today is excluded while it's still in progress)`}
         />
         <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-          Key event tracking was only fixed on {KEY_EVENTS_FIXED_DATE} —
-          key event counts before that date are unreliable and likely undercounted.
+          GA4 key event tracking has been broken repeatedly. Latest fix
+          attempt was {KEY_EVENTS_FIXED_DATE}, not yet verified working —
+          the &ldquo;Key events&rdquo; number here is GA4&apos;s count and
+          shouldn&apos;t be trusted until it roughly matches Typeform
+          applications. Typeform is the trusted source for how many people
+          actually applied.
         </div>
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <MetricCard label="Sessions" value={formatNumber(totals.sessions)} />

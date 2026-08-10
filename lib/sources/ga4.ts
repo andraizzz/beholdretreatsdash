@@ -245,7 +245,15 @@ async function fetchGa4Summary(days: number): Promise<Ga4Summary> {
 export const getGa4Summary = fetchGa4Summary;
 
 export const DOMAIN_LAUNCH_DATE = "2026-07-14";
-export const KEY_EVENTS_FIXED_DATE = "2026-08-04";
+/**
+ * Latest attempted fix date for GA4 key-event tracking. This has been
+ * broken multiple times — the Aug 4 attempt didn't take (zero key events
+ * in the days after), Aug 10 is a fresh attempt, still being verified.
+ * Do NOT treat GA4 key events / conversions as authoritative until the
+ * count roughly matches Typeform applications week-over-week. Applications
+ * count on the dashboard comes from Typeform, not this metric.
+ */
+export const KEY_EVENTS_FIXED_DATE = "2026-08-10";
 
 /** The site's own domains — a "top source" matching one of these is a self-referral, not real inbound traffic. */
 export const SITE_DOMAINS = ["beholdretreats.com", "behold-retreats.com"];
