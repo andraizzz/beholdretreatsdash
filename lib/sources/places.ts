@@ -8,7 +8,7 @@ const COMPETITORS = [
   { name: "Behold Retreats", query: "Behold Retreats, Costa Rica" },
   { name: "Soltara Healing Center", query: "Soltara Healing Center, Costa Rica" },
   { name: "Rythmia Life Advancement Center", query: "Rythmia Life Advancement Center, Costa Rica" },
-  { name: "New Life Ayahuasca", query: "New Life Ayahuasca, Costa Rica" },
+  { name: "New Life Rising", query: "New Life Rising, Tamarindo, Costa Rica" },
   { name: "Posada Natura", query: "Posada Natura, Costa Rica" },
   { name: "Florestral", query: "Florestral, Diamante Valley, Costa Rica" },
 ] as const;
