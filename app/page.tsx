@@ -1,10 +1,14 @@
 import { Suspense } from "react";
+import { CeoSummary } from "@/components/ceo-summary";
+import { SpendSection } from "@/components/spend-section";
 import { Ga4Overview } from "@/components/ga4-overview";
 import { Ga4SinceLaunch } from "@/components/ga4-since-launch";
 import { ApplicationSources } from "@/components/application-sources";
+import { AttributionCompareView } from "@/components/attribution-compare-view";
 import { WeeklyInsights } from "@/components/weekly-insights";
 import { RefreshButton } from "@/components/refresh-button";
 import { DateRangeSelect } from "@/components/date-range-select";
+import { SectionTitle } from "@/components/placeholder";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 
@@ -21,7 +25,7 @@ export default function OverviewPage({
         <div>
           <h1 className="font-heading text-3xl tracking-tight">Overview</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Traffic and channels from Google Analytics
+            Traffic, applications, and channel performance
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -32,6 +36,14 @@ export default function OverviewPage({
         </div>
       </div>
 
+      <Suspense fallback={<CeoSummarySkeleton />}>
+        <CeoSummary />
+      </Suspense>
+
+      <Suspense fallback={<div className="h-24 rounded-md border border-dashed" />}>
+        <SpendSection />
+      </Suspense>
+
       <Suspense fallback={<InsightsSkeleton />}>
         <WeeklyInsights />
       </Suspense>
@@ -39,6 +51,18 @@ export default function OverviewPage({
       <Suspense fallback={<OverviewSkeleton />}>
         <Ga4OverviewSection searchParams={searchParams} />
       </Suspense>
+
+      <Separator />
+
+      <section>
+        <SectionTitle
+          title="Attribution honesty check — GA4 vs. applicant self-report"
+          subtitle="Where the browser and the applicant disagree on the same channel, one of them is wrong. Big gaps flag broken UTMs or misclassified traffic."
+        />
+        <Suspense fallback={<Skeleton className="h-64" />}>
+          <AttributionCompareView />
+        </Suspense>
+      </section>
 
       <Separator />
 
@@ -71,6 +95,16 @@ async function ApplicationSourcesSection({
   const daysParam = Array.isArray(params.days) ? params.days[0] : params.days;
   const days = Number(daysParam) || 7;
   return <ApplicationSources days={days} />;
+}
+
+function CeoSummarySkeleton() {
+  return (
+    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton key={i} className="h-28" />
+      ))}
+    </div>
+  );
 }
 
 function InsightsSkeleton() {

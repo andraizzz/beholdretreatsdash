@@ -202,3 +202,63 @@ async function fetchTypeformTrend(
 }
 
 export const getTypeformTrend = fetchTypeformTrend;
+
+export type TypeformRollingSummary = {
+  /** ISO date strings of each week's start (7 days back from window end per index), index 0 = most recent. */
+  weekStarts: string[];
+  /** Applications per week, aligned to weekStarts (index 0 = current). */
+  countsByWeek: number[];
+  /** Per-source-label applications across the same weeks. */
+  perLabel: { label: string; countsByWeek: number[] }[];
+};
+
+/**
+ * Multi-week rolling data for applications: 5 (or N) consecutive 7-day
+ * windows ending yesterday. Same yesterday-cutoff convention as GA4.
+ */
+async function fetchTypeformRolling(
+  weeks: number,
+): Promise<TypeformRollingSummary> {
+  "use cache";
+  cacheLife("dashboard");
+  cacheTag("typeform");
+
+  const totalDays = weeks * 7;
+  const { since, until } = windowForLastNDays(totalDays);
+  const items = await fetchRawResponses(since, until);
+
+  const endDate = new Date(`${until.slice(0, 10)}T00:00:00Z`);
+  const countsByWeek = new Array(weeks).fill(0);
+  const perLabelMap = new Map<string, number[]>();
+
+  for (const item of items) {
+    if (!item.submittedAt) continue;
+    const d = new Date(`${item.submittedAt.slice(0, 10)}T00:00:00Z`);
+    const daysAgo = Math.floor((endDate.getTime() - d.getTime()) / 86400000);
+    const weekIdx = Math.floor(daysAgo / 7);
+    if (weekIdx < 0 || weekIdx >= weeks) continue;
+
+    countsByWeek[weekIdx]++;
+    if (item.label) {
+      if (!perLabelMap.has(item.label)) {
+        perLabelMap.set(item.label, new Array(weeks).fill(0));
+      }
+      perLabelMap.get(item.label)![weekIdx]++;
+    }
+  }
+
+  const weekStarts: string[] = [];
+  for (let i = 0; i < weeks; i++) {
+    const d = new Date(endDate);
+    d.setUTCDate(d.getUTCDate() - i * 7 - 6);
+    weekStarts.push(isoDate(d));
+  }
+
+  const perLabel = [...perLabelMap.entries()]
+    .map(([label, countsByWeek]) => ({ label, countsByWeek }))
+    .sort((a, b) => b.countsByWeek[0] - a.countsByWeek[0]);
+
+  return { weekStarts, countsByWeek, perLabel };
+}
+
+export const getTypeformRolling = fetchTypeformRolling;

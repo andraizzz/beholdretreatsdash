@@ -520,3 +520,104 @@ async function fetchGa4SinceDate(startDate: string): Promise<Ga4RangeSummary> {
 }
 
 export const getGa4SinceLaunch = () => fetchGa4SinceDate(DOMAIN_LAUNCH_DATE);
+
+export type Ga4RollingSummary = {
+  /** ISO date strings of each week's start (Monday-of-that-window), index 0 = most recent. */
+  weekStarts: string[];
+  /** Sessions per week, aligned to weekStarts (index 0 = current). */
+  sessionsByWeek: number[];
+  /** Key events per week, aligned to weekStarts. */
+  keyEventsByWeek: number[];
+  /** Per-channel sessions across the same weeks. */
+  perChannel: {
+    channel: string;
+    sessionsByWeek: number[];
+    keyEventsByWeek: number[];
+  }[];
+};
+
+/**
+ * Multi-week rolling data: gives 5 (or N) consecutive 7-day windows ending
+ * yesterday, so the CEO strip can compare "this week" against the average
+ * of the prior 4 weeks. Single GA4 call (date × channel), bucketed in JS.
+ */
+async function fetchGa4Rolling(weeks: number): Promise<Ga4RollingSummary> {
+  "use cache";
+  cacheLife("dashboard");
+  cacheTag("ga4");
+
+  const conn = getClient();
+  if (!conn) {
+    throw new Error("GA4 is not configured");
+  }
+  const { client, propertyId } = conn;
+
+  const totalDays = weeks * 7;
+  const range = dateRangeForLastNDays(totalDays);
+
+  const report = await client.runReport({
+    property: `properties/${propertyId}`,
+    dateRanges: [range],
+    dimensions: [
+      { name: "date" },
+      { name: "sessionDefaultChannelGroup" },
+    ],
+    metrics: [{ name: "sessions" }, { name: "keyEvents" }],
+  });
+
+  const num = (v: string | null | undefined) => Number(v ?? 0);
+  const endDate = new Date(`${range.endDate}T00:00:00Z`);
+
+  const sessionsByWeek = new Array(weeks).fill(0);
+  const keyEventsByWeek = new Array(weeks).fill(0);
+  const perChannelMap = new Map<
+    string,
+    { sessions: number[]; keyEvents: number[] }
+  >();
+
+  for (const row of report[0].rows ?? []) {
+    const raw = row.dimensionValues?.[0]?.value || "";
+    const date = `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+    const channel = row.dimensionValues?.[1]?.value || "(unassigned)";
+    const sessions = num(row.metricValues?.[0]?.value);
+    const keyEvents = num(row.metricValues?.[1]?.value);
+
+    const d = new Date(`${date}T00:00:00Z`);
+    const daysAgo = Math.floor((endDate.getTime() - d.getTime()) / 86400000);
+    const weekIdx = Math.floor(daysAgo / 7);
+    if (weekIdx < 0 || weekIdx >= weeks) continue;
+
+    sessionsByWeek[weekIdx] += sessions;
+    keyEventsByWeek[weekIdx] += keyEvents;
+
+    if (!perChannelMap.has(channel)) {
+      perChannelMap.set(channel, {
+        sessions: new Array(weeks).fill(0),
+        keyEvents: new Array(weeks).fill(0),
+      });
+    }
+    const entry = perChannelMap.get(channel)!;
+    entry.sessions[weekIdx] += sessions;
+    entry.keyEvents[weekIdx] += keyEvents;
+  }
+
+  const weekStarts: string[] = [];
+  for (let i = 0; i < weeks; i++) {
+    const d = new Date(endDate);
+    d.setUTCDate(d.getUTCDate() - i * 7 - 6);
+    weekStarts.push(isoDate(d));
+  }
+
+  const perChannel = [...perChannelMap.entries()]
+    .map(([channel, data]) => ({
+      channel,
+      sessionsByWeek: data.sessions,
+      keyEventsByWeek: data.keyEvents,
+    }))
+    // Sort by current-week volume so the biggest channels come first
+    .sort((a, b) => b.sessionsByWeek[0] - a.sessionsByWeek[0]);
+
+  return { weekStarts, sessionsByWeek, keyEventsByWeek, perChannel };
+}
+
+export const getGa4Rolling = fetchGa4Rolling;
