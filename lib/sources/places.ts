@@ -29,7 +29,7 @@ type SearchTextResponse = {
   }[];
 };
 
-async function lookupOne(
+export async function lookupPlaceText(
   apiKey: string,
   query: string,
 ): Promise<{
@@ -75,7 +75,7 @@ async function fetchCompetitorReputation(): Promise<CompetitorReputation[]> {
 
   return Promise.all(
     COMPETITORS.map(async (c) => {
-      const result = await lookupOne(apiKey, c.query);
+      const result = await lookupPlaceText(apiKey, c.query);
       return { name: c.name, ...result };
     }),
   );

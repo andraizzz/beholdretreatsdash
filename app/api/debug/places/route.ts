@@ -1,17 +1,26 @@
-import { getCompetitorReputation, isPlacesConfigured } from "@/lib/sources/places";
+import {
+  getCompetitorReputation,
+  isPlacesConfigured,
+  lookupPlaceText,
+} from "@/lib/sources/places";
 
 export async function GET(request: Request) {
-  // Touch the request before the early return: without this the
-  // unconfigured branch is prerenderable, and Next would bake
-  // "configured: false" into a static response that never re-evaluates
-  // once the key is added (same trap hit on the typeform debug route).
-  void request.url;
+  const q = new URL(request.url).searchParams.get("q");
 
   if (!isPlacesConfigured()) {
     return Response.json({ configured: false }, { status: 200 });
   }
 
   try {
+    // ?q=<any text query> tests the Places API directly, bypassing the
+    // cached COMPETITORS list — for figuring out the right query string
+    // when a business doesn't resolve.
+    if (q) {
+      const apiKey = process.env.GOOGLE_PLACES_API_KEY!;
+      const result = await lookupPlaceText(apiKey, q);
+      return Response.json({ configured: true, query: q, result });
+    }
+
     const rows = await getCompetitorReputation();
     return Response.json({ configured: true, rows });
   } catch (error) {
