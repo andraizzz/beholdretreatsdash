@@ -9,10 +9,7 @@ import {
   getTypeformSources,
   isTypeformConfigured,
 } from "@/lib/sources/typeform";
-import {
-  getSpendHistory,
-  isSpendConfigured,
-} from "@/lib/sources/spend";
+import { getWeeklySpend } from "@/lib/sources/spend";
 import { buildAttributionComparison } from "@/lib/attribution-compare";
 import { pickPositiveSignal, pickFixSignal } from "@/lib/signals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -138,7 +135,7 @@ export async function CeoSummary() {
 
   if (!isGa4Configured()) return null;
 
-  const [ga4Rolling, weekly, typeformRolling, typeformWeekly, spendHistory] =
+  const [ga4Rolling, weekly, typeformRolling, typeformWeekly] =
     await Promise.all([
       getGa4Rolling(ROLLING_WEEKS),
       getGa4Summary(7),
@@ -147,9 +144,6 @@ export async function CeoSummary() {
         : Promise.resolve(null),
       isTypeformConfigured()
         ? getTypeformSources(7).catch(() => null)
-        : Promise.resolve(null),
-      isSpendConfigured()
-        ? getSpendHistory(ROLLING_WEEKS).catch(() => null)
         : Promise.resolve(null),
     ]);
 
@@ -180,25 +174,19 @@ export async function CeoSummary() {
     ? pickFixSignal(ga4Rolling, attribution)
     : null;
 
-  const currentSpend = spendHistory?.[0]?.total ?? null;
-  const baselineSpend =
-    spendHistory && spendHistory.length > 1
-      ? avg(spendHistory.slice(1).map((s) => s.total))
-      : null;
+  // Spend is a constant per week — CPA moves entirely with app volume.
+  const weeklySpend = getWeeklySpend();
   const cpaCurrent =
-    currentSpend !== null && appsCurrent !== null && appsCurrent > 0
-      ? currentSpend / appsCurrent
+    appsCurrent !== null && appsCurrent > 0
+      ? weeklySpend.total / appsCurrent
       : null;
   const cpaBaseline =
-    baselineSpend !== null && appsBaseline !== null && appsBaseline > 0
-      ? baselineSpend / appsBaseline
+    appsBaseline !== null && appsBaseline > 0
+      ? weeklySpend.total / appsBaseline
       : null;
 
-  const showCpa = isSpendConfigured();
-  const gridCols = showCpa ? "lg:grid-cols-5" : "lg:grid-cols-4";
-
   return (
-    <div className={cn("grid gap-4 grid-cols-2", gridCols)}>
+    <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
       <StatTile
         label="Applications"
         value={appsCurrent !== null ? formatNumber(appsCurrent) : "—"}
@@ -223,25 +211,27 @@ export async function CeoSummary() {
         )}
       </StatTile>
 
-      {showCpa && (
-        <StatTile
-          label="Cost per application"
-          value={cpaCurrent !== null ? `$${cpaCurrent.toFixed(0)}` : "—"}
-        >
-          {cpaCurrent !== null && cpaBaseline !== null ? (
-            <DeltaLine
-              current={cpaCurrent}
-              baseline={cpaBaseline}
-              suffix=""
-              invert
-            />
-          ) : (
-            <div className="text-xs text-muted-foreground mt-1">
-              Log this week&apos;s spend below to compute
-            </div>
-          )}
-        </StatTile>
-      )}
+      <StatTile
+        label="Cost per application"
+        value={cpaCurrent !== null ? `$${cpaCurrent.toFixed(0)}` : "—"}
+      >
+        {cpaCurrent !== null && cpaBaseline !== null ? (
+          <DeltaLine
+            current={cpaCurrent}
+            baseline={cpaBaseline}
+            suffix=""
+            invert
+          />
+        ) : (
+          <div className="text-xs text-muted-foreground mt-1">
+            No applications yet this week
+          </div>
+        )}
+        <div className="text-[10px] text-muted-foreground mt-1">
+          ${weeklySpend.total}/wk spend (Bing ${weeklySpend.bing} + CR News $
+          {weeklySpend.crNews})
+        </div>
+      </StatTile>
 
       <SignalTile
         label="Biggest positive signal"

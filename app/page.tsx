@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { CeoSummary } from "@/components/ceo-summary";
-import { SpendSection } from "@/components/spend-section";
 import { Ga4Overview } from "@/components/ga4-overview";
 import { Ga4SinceLaunch } from "@/components/ga4-since-launch";
 import { ApplicationSources } from "@/components/application-sources";
@@ -38,10 +37,6 @@ export default function OverviewPage({
 
       <Suspense fallback={<CeoSummarySkeleton />}>
         <CeoSummary />
-      </Suspense>
-
-      <Suspense fallback={<div className="h-24 rounded-md border border-dashed" />}>
-        <SpendSection />
       </Suspense>
 
       <Suspense fallback={<InsightsSkeleton />}>
@@ -99,8 +94,8 @@ async function ApplicationSourcesSection({
 
 function CeoSummarySkeleton() {
   return (
-    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
+    <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+      {Array.from({ length: 5 }).map((_, i) => (
         <Skeleton key={i} className="h-28" />
       ))}
     </div>
