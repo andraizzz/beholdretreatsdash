@@ -8,4 +8,6 @@ export async function refreshGa4() {
   updateTag("ga4");
   updateTag("gsc");
   updateTag("typeform");
+  updateTag("trends");
+  updateTag("places");
 }

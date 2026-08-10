@@ -12,6 +12,7 @@ const links = [
   { href: "/channels/referrals", label: "Referrals" },
   { href: "/channels/direct", label: "Direct" },
   { href: "/applications", label: "Applications" },
+  { href: "/competitors", label: "Competitors" },
 ];
 
 export function Nav() {
