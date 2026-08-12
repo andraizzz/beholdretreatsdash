@@ -199,15 +199,24 @@ async function runOne(
   }
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
- * Run a provider's queries with limited concurrency instead of blasting all
- * 8 at once. Perplexity's rate limit rejected 7 of 8 simultaneous requests
- * in testing (429 request_rate_limit_exceeded); this runs once a week, so
- * trading a few extra seconds of wall-clock time for reliability is free.
+ * Run a provider's queries with limited concurrency AND explicit spacing
+ * between request starts. Perplexity's Tier 0 (50 RPM headroom on paper)
+ * still rejected 7 of 8 requests with a concurrency-2 pool — a pool with
+ * no inter-request delay starts request #2 the instant #1's socket opens,
+ * which is bursty enough to trip whatever short-window cap Perplexity
+ * actually enforces underneath the published RPM figure. Real fix is
+ * wall-clock spacing, not just a lower concurrency count. This runs once
+ * a week in a background cache fill, so a few extra seconds is free.
  */
 async function runProviderQueries(
   provider: AiProvider,
   concurrency: number,
+  minDelayMs: number,
 ): Promise<QueryResult[]> {
   const queue = [...AI_SEARCH_QUERIES];
   const results: QueryResult[] = [];
@@ -217,6 +226,7 @@ async function runProviderQueries(
       const query = queue.shift();
       if (!query) break;
       results.push(await runOne(provider, query));
+      if (minDelayMs > 0 && queue.length > 0) await sleep(minDelayMs);
     }
   }
 
@@ -226,11 +236,16 @@ async function runProviderQueries(
   return results;
 }
 
-/** Per-provider concurrency cap. Perplexity is the tightest; keep it low. */
-const PROVIDER_CONCURRENCY: Record<AiProvider, number> = {
-  chatgpt: 4,
-  claude: 4,
-  perplexity: 2,
+/** Per-provider concurrency + spacing. Perplexity needs to be fully
+ *  sequential with real delay; OpenAI/Anthropic tolerated full concurrency
+ *  fine in testing. */
+const PROVIDER_THROTTLE: Record<
+  AiProvider,
+  { concurrency: number; minDelayMs: number }
+> = {
+  chatgpt: { concurrency: 4, minDelayMs: 0 },
+  claude: { concurrency: 4, minDelayMs: 0 },
+  perplexity: { concurrency: 1, minDelayMs: 2000 },
 };
 
 async function fetchAiSearchVisibility(): Promise<AiSearchSummary> {
@@ -239,11 +254,12 @@ async function fetchAiSearchVisibility(): Promise<AiSearchSummary> {
   cacheTag("ai-search");
 
   // Providers run in parallel with each other; each provider's own 8
-  // queries are throttled internally per PROVIDER_CONCURRENCY.
+  // queries are throttled internally per PROVIDER_THROTTLE.
   const perProvider = await Promise.all(
-    AI_PROVIDERS.map((provider) =>
-      runProviderQueries(provider, PROVIDER_CONCURRENCY[provider]),
-    ),
+    AI_PROVIDERS.map((provider) => {
+      const { concurrency, minDelayMs } = PROVIDER_THROTTLE[provider];
+      return runProviderQueries(provider, concurrency, minDelayMs);
+    }),
   );
 
   return {
