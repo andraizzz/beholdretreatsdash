@@ -199,22 +199,55 @@ async function runOne(
   }
 }
 
+/**
+ * Run a provider's queries with limited concurrency instead of blasting all
+ * 8 at once. Perplexity's rate limit rejected 7 of 8 simultaneous requests
+ * in testing (429 request_rate_limit_exceeded); this runs once a week, so
+ * trading a few extra seconds of wall-clock time for reliability is free.
+ */
+async function runProviderQueries(
+  provider: AiProvider,
+  concurrency: number,
+): Promise<QueryResult[]> {
+  const queue = [...AI_SEARCH_QUERIES];
+  const results: QueryResult[] = [];
+
+  async function worker() {
+    while (queue.length > 0) {
+      const query = queue.shift();
+      if (!query) break;
+      results.push(await runOne(provider, query));
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: concurrency }, () => worker()),
+  );
+  return results;
+}
+
+/** Per-provider concurrency cap. Perplexity is the tightest; keep it low. */
+const PROVIDER_CONCURRENCY: Record<AiProvider, number> = {
+  chatgpt: 4,
+  claude: 4,
+  perplexity: 2,
+};
+
 async function fetchAiSearchVisibility(): Promise<AiSearchSummary> {
   "use cache: remote";
   cacheLife("weekly");
   cacheTag("ai-search");
 
-  // Fan out — 8 queries × 3 providers = 24 calls, all in parallel.
-  const jobs: Promise<QueryResult>[] = [];
-  for (const provider of AI_PROVIDERS) {
-    for (const query of AI_SEARCH_QUERIES) {
-      jobs.push(runOne(provider, query));
-    }
-  }
-  const results = await Promise.all(jobs);
+  // Providers run in parallel with each other; each provider's own 8
+  // queries are throttled internally per PROVIDER_CONCURRENCY.
+  const perProvider = await Promise.all(
+    AI_PROVIDERS.map((provider) =>
+      runProviderQueries(provider, PROVIDER_CONCURRENCY[provider]),
+    ),
+  );
 
   return {
-    results,
+    results: perProvider.flat(),
     generatedAt: new Date().toISOString(),
   };
 }
