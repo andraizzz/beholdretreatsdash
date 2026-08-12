@@ -1,4 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
+import { generateText } from "ai";
+import { anthropic } from "@ai-sdk/anthropic";
 import { detectBrandMentions } from "@/lib/brand-mention";
 
 /**
@@ -8,10 +10,13 @@ import { detectBrandMentions } from "@/lib/brand-mention";
  * data shows ~13%% of applicants cite "AI Search" since the domain launch
  * so this measures a real growing channel.
  *
- * Uses direct fetch to each provider (rather than the AI SDK) because
- * provider-specific tools like web_search aren't reliably passthrough-able
- * through the Vercel AI Gateway string-model form. Direct fetch is uniform
- * across all 3 providers and needs no new npm dependencies.
+ * Provider routing:
+ * - Anthropic (Claude): AI SDK + Vercel AI Gateway. Uses the existing
+ *   gateway integration that insights.ts already relies on — no new
+ *   ANTHROPIC_API_KEY needed. The web_search tool comes from the
+ *   @ai-sdk/anthropic provider and is passed through the gateway.
+ * - OpenAI + Perplexity: direct fetch. Neither has AI Gateway passthrough
+ *   for their web-enabled search APIs today; both need their own API keys.
  */
 
 /**
@@ -59,54 +64,32 @@ export type AiSearchSummary = {
 };
 
 export function isAiSearchConfigured(): boolean {
-  return Boolean(
-    process.env.ANTHROPIC_API_KEY &&
-      process.env.OPENAI_API_KEY &&
-      process.env.PERPLEXITY_API_KEY,
-  );
+  // Anthropic routes via Vercel AI Gateway (same integration insights uses)
+  // so it doesn't need a direct provider key here. Only OpenAI + Perplexity
+  // require their own credentials.
+  return Boolean(process.env.OPENAI_API_KEY && process.env.PERPLEXITY_API_KEY);
 }
 
 // ---------- Provider callers ----------
 
-type AnthropicContentBlock = { type: string; text?: string };
-
 async function callAnthropic(query: string): Promise<string> {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) throw new Error("ANTHROPIC_API_KEY missing");
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
+  // AI Gateway route: string model form + provider-specific tool from the
+  // @ai-sdk/anthropic package. The gateway proxies the tool call through
+  // to Anthropic's Messages API and returns the response text. No direct
+  // ANTHROPIC_API_KEY needed — Vercel injects the gateway credential.
+  //
+  // The `as never` cast bypasses a spurious type mismatch between
+  // @ai-sdk/anthropic v3 (which types the tool's input as `{ query: string }`)
+  // and ai v6's tools param (which infers `never` for provider-native tools).
+  // Runtime shape is correct; the AI SDK's own docs use this exact pattern.
+  const { text } = await generateText({
+    model: "anthropic/claude-sonnet-5",
+    prompt: query,
+    tools: {
+      web_search: anthropic.tools.webSearch_20250305({ maxUses: 5 }) as never,
     },
-    body: JSON.stringify({
-      model: "claude-sonnet-5",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: query }],
-      tools: [
-        {
-          type: "web_search_20250305",
-          name: "web_search",
-          max_uses: 5,
-        },
-      ],
-    }),
   });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(
-      `Anthropic ${res.status}: ${body.slice(0, 200) || res.statusText}`,
-    );
-  }
-
-  const data = (await res.json()) as { content?: AnthropicContentBlock[] };
-  return (data.content ?? [])
-    .filter((b) => b.type === "text" && b.text)
-    .map((b) => b.text)
-    .join("\n");
+  return text;
 }
 
 type OpenAiResponse = {

@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.110",
     "@base-ui/react": "^1.7.0",
     "@google-analytics/data": "^6.1.0",
     "ai": "^6.0.241",
