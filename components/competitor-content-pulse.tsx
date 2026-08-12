@@ -42,71 +42,71 @@ export async function CompetitorContentPulse() {
   }
 
   return (
-    <div className="rounded-md border overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-secondary/50 text-xs uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className="text-left px-3 py-2">Competitor</th>
-            <th className="text-left px-3 py-2">Last post</th>
-            <th className="text-right px-3 py-2">Posts/mo</th>
-            <th className="text-left px-3 py-2">Recent topics</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const days = daysSince(row.lastPostAt);
-            const isBehold = row.name === "Behold Retreats";
-            return (
-              <tr
-                key={row.name}
-                className={cn(
-                  "border-t align-top",
-                  isBehold && "bg-secondary/30",
-                )}
-              >
-                <td className="px-3 py-2 font-medium">
-                  {row.name}
-                  {isBehold && (
-                    <span className="ml-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                      (us)
-                    </span>
+    <div className="space-y-2">
+      <div className="rounded-md border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary/50 text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="text-left px-3 py-2">Competitor</th>
+              <th className="text-left px-3 py-2">Last activity</th>
+              <th className="text-left px-3 py-2">Recent topics</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const days = daysSince(row.lastPostAt);
+              const isBehold = row.name === "Behold Retreats";
+              return (
+                <tr
+                  key={row.name}
+                  className={cn(
+                    "border-t align-top",
+                    isBehold && "bg-secondary/30",
                   )}
-                  {row.error && (
-                    <div
-                      className="text-[10px] text-red-600 mt-0.5"
-                      title={row.error}
-                    >
-                      fetch error — investigate
-                    </div>
-                  )}
-                </td>
-                <td className={cn("px-3 py-2", stalenessColor(days))}>
-                  {row.hasBlog ? formatDaysAgo(days) : "no blog"}
-                  {row.lastPostAt && (
-                    <div className="text-[10px] text-muted-foreground mt-0.5">
-                      {row.lastPostAt}
-                    </div>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  {row.postsPerMonth !== null
-                    ? row.postsPerMonth.toFixed(1)
-                    : row.hasBlog
-                      ? "—"
-                      : ""}
-                </td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">
-                  {row.topics.length > 0
-                    ? row.topics.join(", ")
-                    : row.hasBlog
-                      ? "no recent posts to cluster"
-                      : ""}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                >
+                  <td className="px-3 py-2 font-medium">
+                    {row.name}
+                    {isBehold && (
+                      <span className="ml-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        (us)
+                      </span>
+                    )}
+                    {row.error && (
+                      <div
+                        className="text-[10px] text-red-600 mt-0.5"
+                        title={row.error}
+                      >
+                        fetch error — investigate
+                      </div>
+                    )}
+                  </td>
+                  <td className={cn("px-3 py-2", stalenessColor(days))}>
+                    {row.hasBlog ? formatDaysAgo(days) : "no blog"}
+                    {row.lastPostAt && (
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        {row.lastPostAt}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                    {row.topics.length > 0
+                      ? row.topics.join(", ")
+                      : row.hasBlog
+                        ? "no recent posts to cluster"
+                        : ""}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="text-[10px] text-muted-foreground px-1">
+        &ldquo;Last activity&rdquo; is the most recent post or update per site.
+        Publishing cadence isn&apos;t shown because sitemap &ldquo;last-modified&rdquo;
+        dates conflate real new posts with bulk edits (e.g. Behold&apos;s Jul 14
+        domain migration re-stamped every historical post).
+      </div>
     </div>
   );
 }
