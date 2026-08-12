@@ -170,8 +170,12 @@ async function fetchNewLifeRising(): Promise<CompetitorContent> {
     hasBlog: true,
   };
   try {
-    // Wix exposes a sitemap. Blog posts live at /post/{slug}.
-    const xml = await fetchText("https://newliferising.com/sitemap.xml");
+    // Wix's sitemap-index nests blog posts under a sub-sitemap. Fetch it
+    // directly (their apex domain sitemap is empty; the www version is the
+    // one their robots.txt points to). Posts live at /post/{slug}.
+    const xml = await fetchText(
+      "https://www.newliferising.com/blog-posts-sitemap.xml",
+    );
     const posts = parseSitemapUrls(xml, /\/post\//i);
     return finalize(base, posts, null);
   } catch (error) {
@@ -187,7 +191,15 @@ async function fetchRythmia(): Promise<CompetitorContent> {
   };
   try {
     const html = await fetchText("https://rythmia.com/blog");
-    const posts = extractPostLinks(html, "rythmia.com", /rythmia\.com\/blog\/[a-z0-9-]+/i);
+    // Their /blog page mixes category links (/blog/ayahuasca, /blog/prep, etc.)
+    // with actual posts (/blog/what-is-a-blue-zone). Categories are always
+    // single-word slugs, posts have multi-word hyphenated slugs — filter for
+    // at least one hyphen in the last path segment.
+    const posts = extractPostLinks(
+      html,
+      "rythmia.com",
+      /rythmia\.com\/blog\/[a-z0-9]+-[a-z0-9-]+$/i,
+    );
     return finalize(base, posts, null);
   } catch (error) {
     return finalize(base, [], errMsg(error));
@@ -201,16 +213,42 @@ async function fetchBehold(): Promise<CompetitorContent> {
     hasBlog: true,
   };
   try {
+    // Behold's Rank Math sitemap-index → walk the post-sitemap children,
+    // which include real <lastmod> dates. Falls back to a HTML scrape of
+    // /blog if the sitemap ever moves.
+    const posts = await fetchBeholdFromSitemap();
+    if (posts.length > 0) return finalize(base, posts, null);
     const html = await fetchText("https://beholdretreats.com/blog");
-    const posts = extractPostLinks(
+    const scraped = extractPostLinks(
       html,
       "beholdretreats.com",
       /beholdretreats\.com\/blog\/[a-z0-9-]+/i,
     );
-    return finalize(base, posts, null);
+    return finalize(base, scraped, null);
   } catch (error) {
     return finalize(base, [], errMsg(error));
   }
+}
+
+async function fetchBeholdFromSitemap(): Promise<BlogPost[]> {
+  const indexXml = await fetchText(
+    "https://beholdretreats.com/sitemap_index.xml",
+  );
+  // Grab all <loc> URLs that look like a post sitemap.
+  const subSitemaps = (indexXml.match(/<loc>([^<]+)<\/loc>/gi) ?? [])
+    .map((m) => m.replace(/<\/?loc>/gi, "").trim())
+    .filter((url) => /post-sitemap\d*\.xml$/i.test(url));
+
+  const posts: BlogPost[] = [];
+  for (const subUrl of subSitemaps) {
+    try {
+      const xml = await fetchText(subUrl);
+      posts.push(...parseSitemapUrls(xml, /\/blog\/[a-z0-9-]+/i));
+    } catch {
+      // Skip a broken sub-sitemap rather than fail the whole fetch.
+    }
+  }
+  return posts;
 }
 
 function noBlog(name: string, domain: string): CompetitorContent {
