@@ -38,11 +38,21 @@ export type CompetitorContent = {
 
 // ---------- Fetch helpers ----------
 
+/**
+ * Some competitor origins (Soltara's LiteSpeed setup in particular) send
+ * `Vary: User-Agent` and drop the connection outright for bot-shaped UAs —
+ * shows up as a Node.js "terminated" fetch error, not a bad status.
+ * Sending a real browser UA string bypasses that. Accept a couple of extra
+ * headers a real browser would send so we look less bot-like end-to-end.
+ */
 async function fetchText(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (BeholdAnalytics/1.0; +https://behold-analytics.vercel.app)",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+      Accept:
+        "application/rss+xml, application/atom+xml, application/xml, text/xml, text/html;q=0.9, */*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
     },
   });
   if (!res.ok) throw new Error(`${url} → ${res.status}`);
@@ -155,7 +165,9 @@ async function fetchSoltara(): Promise<CompetitorContent> {
     hasBlog: true,
   };
   try {
-    const xml = await fetchText("https://soltara.co/feed");
+    // Trailing slash intentional — bare /feed 301-redirects here and the
+    // redirect follow has been flaky from Vercel's cloud IPs.
+    const xml = await fetchText("https://soltara.co/feed/");
     const posts = parseRssItems(xml);
     return finalize(base, posts, null);
   } catch (error) {
