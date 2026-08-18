@@ -42,13 +42,13 @@ export function InitiativeCard({ initiative: init, live }: Props) {
   const overdue = days < 0 && init.status !== "complete";
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <CardTitle className="text-base font-heading tracking-tight">
+            <CardTitle className="text-xl font-heading tracking-tight leading-tight">
               {init.title}
             </CardTitle>
-            <div className="text-xs text-muted-foreground mt-1">
+            <div className="text-xs text-muted-foreground mt-1.5">
               {init.owner} · {formatDate(init.startedAt)} → {formatDate(init.targetAt)}
               {" · "}
               <span className={cn(overdue && "text-red-600 font-medium")}>

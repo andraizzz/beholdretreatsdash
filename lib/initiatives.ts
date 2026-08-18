@@ -135,19 +135,20 @@ export const INITIATIVES: Initiative[] = [
   },
   {
     id: "google-review-push",
-    title: "Google review volume push",
+    title: "Push Google rating from 4.8★ → 4.9★",
     description:
-      "Behold's rating (4.8★) matches Rythmia and Soltara; the gap is pure volume (39 vs 410 vs 287). A simple post-retreat 'leave us a Google review' ask (email or QR at checkout) should close this fast — the underlying satisfaction is clearly already there.",
+      "Behold currently sits at 4.8★. Per Andra's math, 14 more 5-star reviews would tip the rounded average to 4.9 — closing a real perceived-quality gap with Soltara (4.9) at the same time. Review volume is also small overall vs. Rythmia (410) and Soltara (287), so this doubles as a volume push. A simple post-retreat 'leave us a Google review' ask (email or QR at checkout) should close this fast — the underlying satisfaction is clearly already there.",
     owner: "Ops / Retreat team",
     status: "not_started",
     startedAt: KICKOFF,
     targetAt: TARGET,
-    metric: "Google review count on the Behold Places listing",
-    manualProgress: "Ask flow not yet set up",
+    metric: "Google rating on the Behold Places listing (target 4.9★)",
+    manualProgress:
+      "Ask flow not yet set up · goal: 14 more 5-star reviews to reach 4.9★",
     liveMetric: {
       kind: "review_count",
       brand: "Behold Retreats",
-      targetLabel: "target: 100+ reviews (Soltara has 287, Rythmia 410)",
+      targetLabel: "goal: 4.9★ rating — needs ~14 more 5-star reviews",
     },
     notes: [],
   },
