@@ -247,13 +247,15 @@ export const getGa4Summary = fetchGa4Summary;
 export const DOMAIN_LAUNCH_DATE = "2026-07-14";
 /**
  * Latest attempted fix date for GA4 key-event tracking. This has been
- * broken multiple times — the Aug 4 attempt didn't take (zero key events
- * in the days after), Aug 10 is a fresh attempt, still being verified.
+ * broken multiple times — Aug 4 attempt didn't take (zero events in the
+ * days after), Aug 10 attempt also failed (still all misattributed to
+ * "Email"), Aug 17 is the latest attempt, still being verified.
  * Do NOT treat GA4 key events / conversions as authoritative until the
- * count roughly matches Typeform applications week-over-week. Applications
- * count on the dashboard comes from Typeform, not this metric.
+ * count roughly matches Typeform applications week-over-week AND the
+ * channel breakdown looks sane (not all bucketed under Email).
+ * Applications count on the dashboard comes from Typeform, not this metric.
  */
-export const KEY_EVENTS_FIXED_DATE = "2026-08-10";
+export const KEY_EVENTS_FIXED_DATE = "2026-08-17";
 
 /** The site's own domains — a "top source" matching one of these is a self-referral, not real inbound traffic. */
 export const SITE_DOMAINS = ["beholdretreats.com", "behold-retreats.com"];
