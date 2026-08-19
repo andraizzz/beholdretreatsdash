@@ -26,6 +26,12 @@ export type LiveMetricKind =
   /** Checks GA4 referral sources for a specific domain. */
   | { kind: "referral_domain"; domain: string; label: string };
 
+/** An actionable checklist item within an initiative. Used for initiatives
+ *  that are really a punch-list of specific tasks (e.g. blog page merges,
+ *  SEO refresh checklist) rather than a single tracked number. Optional —
+ *  most initiatives don't need it. */
+export type TaskItem = { done: boolean; text: string };
+
 export type Initiative = {
   id: string;
   title: string;
@@ -40,6 +46,8 @@ export type Initiative = {
   manualProgress: string;
   /** Optional live-data pull. If set, the card also renders this alongside manualProgress. */
   liveMetric?: LiveMetricKind;
+  /** Optional actionable checklist rendered on the card. Toggle `done` when items complete. */
+  tasks?: TaskItem[];
   /** Newest notes first. Append via chat updates. */
   notes: { date: string; text: string }[];
 };
@@ -150,6 +158,26 @@ export const INITIATIVES: Initiative[] = [
       brand: "Behold Retreats",
       targetLabel: "goal: 4.9★ rating — needs ~14 more 5-star reviews",
     },
+    notes: [],
+  },
+  {
+    id: "blog-updates-refreshes",
+    title: "Blog updates & refreshes",
+    description:
+      "Punch-list of specific blog work: merging duplicate pages that split ranking authority, refreshing stale copy and stats on high-traffic posts, and consolidating overlapping content. Blog is Behold's biggest organic asset (43-50% of traffic per the marketing pie) — every duplicate or dated page is leaving ranking + conversion on the table.",
+    owner: "Content team",
+    status: "not_started",
+    startedAt: KICKOFF,
+    targetAt: TARGET,
+    metric:
+      "Tasks completed + GSC rank / clicks movement on the updated pages (measured in the SEO page)",
+    manualProgress: "Punch-list below — add items via chat as we spot them",
+    tasks: [
+      {
+        done: false,
+        text: "Merge the two \"what is ayahuasca\" pages. Keep /blog/what-is-ayahuasca-explanation-experiences-and-ayahuasca-retreats/ (41% of traffic) and fold /blog/what-is-ayahuasca-origins-benefits-and-how-it-works/ into it (301 redirect the folded URL to the kept one to preserve link equity).",
+      },
+    ],
     notes: [],
   },
   {

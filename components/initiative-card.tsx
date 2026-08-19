@@ -101,6 +101,37 @@ export function InitiativeCard({ initiative: init, live }: Props) {
           )}
         </div>
 
+        {init.tasks && init.tasks.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+              Tasks ({init.tasks.filter((t) => t.done).length} of{" "}
+              {init.tasks.length} done)
+            </div>
+            <ul className="space-y-1.5 text-sm">
+              {init.tasks.map((t, i) => (
+                <li key={i} className="flex items-start gap-2 leading-snug">
+                  <span
+                    className={cn(
+                      "mt-0.5 shrink-0 select-none tabular-nums",
+                      t.done ? "text-emerald-600" : "text-muted-foreground",
+                    )}
+                    aria-hidden
+                  >
+                    {t.done ? "☑" : "☐"}
+                  </span>
+                  <span
+                    className={cn(
+                      t.done && "line-through text-muted-foreground",
+                    )}
+                  >
+                    {t.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {init.notes.length > 0 && (
           <div className="space-y-1">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
