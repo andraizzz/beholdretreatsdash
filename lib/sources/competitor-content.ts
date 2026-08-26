@@ -1,4 +1,5 @@
 import { cacheLife, cacheTag } from "next/cache";
+import { getCurrentWeekStart } from "@/lib/week";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 
@@ -453,7 +454,10 @@ Be concise. No preamble.`;
  * Both the Content Pulse table and the Content Gaps section read from this,
  * so the expensive work happens exactly once per cache entry.
  */
-async function fetchCompetitorContent(): Promise<{
+async function fetchCompetitorContent(
+  /** ISO Monday of the current week — see the note in lib/week.ts. */
+  weekStart: string,
+): Promise<{
   rows: CompetitorContent[];
   gaps: ContentGap[];
   beholdStrengths: string[];
@@ -517,13 +521,13 @@ export const getCompetitorContent = fetchCompetitorContent;
 
 /** Content Pulse table reads just the rows. */
 export async function getCompetitorContentPulse(): Promise<CompetitorContent[]> {
-  return (await fetchCompetitorContent()).rows;
+  return (await fetchCompetitorContent(getCurrentWeekStart())).rows;
 }
 
-/** Content Gaps section reads the analysis half. Same cache entry as the
- *  pulse above, so this costs nothing extra. */
+/** Content Gaps section reads the analysis half. Same weekStart means the
+ *  same cache entry as the pulse above, so this costs nothing extra. */
 export async function getContentGaps(): Promise<ContentGapAnalysis> {
   const { gaps, beholdStrengths, competitorPostCount, beholdPostCount } =
-    await fetchCompetitorContent();
+    await fetchCompetitorContent(getCurrentWeekStart());
   return { gaps, beholdStrengths, competitorPostCount, beholdPostCount };
 }

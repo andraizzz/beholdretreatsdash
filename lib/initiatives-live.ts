@@ -6,6 +6,7 @@
  * returns null and the card silently falls back to manualProgress only.
  */
 
+import { getCurrentWeekStart } from "@/lib/week";
 import type { Initiative, LiveMetricKind } from "@/lib/initiatives";
 import { getGa4Summary, isGa4Configured } from "@/lib/sources/ga4";
 import { getTypeformSources, isTypeformConfigured } from "@/lib/sources/typeform";
@@ -58,7 +59,7 @@ async function resolve(
 
     case "ai_search_queries": {
       if (!isAiSearchConfigured()) return null;
-      const summary = await getAiSearchVisibility();
+      const summary = await getAiSearchVisibility(getCurrentWeekStart());
       const targetSet = new Set(m.queries.map((q) => q.toLowerCase()));
       const relevant = summary.results.filter((r) =>
         targetSet.has(r.query.toLowerCase()),

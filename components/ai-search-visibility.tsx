@@ -1,3 +1,4 @@
+import { getCurrentWeekStart } from "@/lib/week";
 import { connection } from "next/server";
 import {
   getAiSearchVisibility,
@@ -26,7 +27,7 @@ export async function AiSearchVisibility() {
 
   let summary;
   try {
-    summary = await getAiSearchVisibility();
+    summary = await getAiSearchVisibility(getCurrentWeekStart());
   } catch (error) {
     return (
       <div className="rounded-md border border-dashed border-red-300 p-6 text-sm text-red-600">

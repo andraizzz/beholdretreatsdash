@@ -270,7 +270,12 @@ const PROVIDER_THROTTLE: Record<
   perplexity: { concurrency: 1, minDelayMs: 2000 },
 };
 
-async function fetchAiSearchVisibility(): Promise<AiSearchSummary> {
+async function fetchAiSearchVisibility(
+  /** ISO Monday of the current week. Part of the cache key, so regeneration
+   *  pins to the calendar week instead of drifting to whatever weekday it
+   *  last ran on. Callers pass getCurrentWeekStart(). */
+  weekStart: string,
+): Promise<AiSearchSummary> {
   "use cache: remote";
   cacheLife("weekly");
   cacheTag("ai-search");
@@ -286,7 +291,7 @@ async function fetchAiSearchVisibility(): Promise<AiSearchSummary> {
 
   return {
     results: perProvider.flat(),
-    generatedAt: new Date().toISOString(),
+    generatedAt: weekStart,
   };
 }
 

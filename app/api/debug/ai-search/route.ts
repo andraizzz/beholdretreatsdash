@@ -1,3 +1,4 @@
+import { getCurrentWeekStart } from "@/lib/week";
 import {
   getAiSearchVisibility,
   isAiSearchConfigured,
@@ -13,7 +14,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const summary = await getAiSearchVisibility();
+    const summary = await getAiSearchVisibility(getCurrentWeekStart());
     return Response.json({ configured: true, ...summary });
   } catch (error) {
     return Response.json(
