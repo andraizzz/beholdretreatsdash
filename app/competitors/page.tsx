@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { AiSearchVisibility } from "@/components/ai-search-visibility";
 import { CompetitorContentPulse } from "@/components/competitor-content-pulse";
+import { ContentGaps } from "@/components/content-gaps";
 import { CompetitorReputation } from "@/components/competitor-reputation";
 import { SectionTitle } from "@/components/placeholder";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,6 +35,16 @@ export default function CompetitorsPage() {
         />
         <Suspense fallback={<Skeleton className="h-48" />}>
           <CompetitorContentPulse />
+        </Suspense>
+      </section>
+
+      <section>
+        <SectionTitle
+          title="Content gaps — what they cover and we don't"
+          subtitle="Topics competitors have published on that Behold hasn't, with a suggested angle for each. Grounded in their actual post titles, not general knowledge."
+        />
+        <Suspense fallback={<Skeleton className="h-64" />}>
+          <ContentGaps />
         </Suspense>
       </section>
 

@@ -202,16 +202,19 @@ async function fetchRythmia(): Promise<CompetitorContent> {
     hasBlog: true,
   };
   try {
-    const html = await fetchText("https://rythmia.com/blog");
-    // Their /blog page mixes category links (/blog/ayahuasca, /blog/prep, etc.)
-    // with actual posts (/blog/what-is-a-blue-zone). Categories are always
-    // single-word slugs, posts have multi-word hyphenated slugs — filter for
-    // at least one hyphen in the last path segment.
-    const posts = extractPostLinks(
-      html,
-      "rythmia.com",
-      /rythmia\.com\/blog\/[a-z0-9]+-[a-z0-9-]+$/i,
-    );
+    // Use the sitemap, NOT an HTML scrape of /blog. The blog index only
+    // exposes a handful of links (the rest load client-side) and carries no
+    // dates, which is why this reported "no recent posts" on 2026-08-26
+    // while Rythmia had in fact published the day before. The sitemap has
+    // all ~95 posts with real <lastmod> dates.
+    //
+    // Note the www: rythmia.com/sitemap.xml 301-redirects to www, and the
+    // redirect follow has been unreliable from Vercel's cloud IPs.
+    const xml = await fetchText("https://www.rythmia.com/sitemap.xml");
+    // Category pages (/blog/ayahuasca, /blog/prep, /blog/stories) share the
+    // same path prefix as posts. Categories are single-word slugs; posts are
+    // multi-word hyphenated — so require at least one hyphen.
+    const posts = parseSitemapUrls(xml, /\/blog\/[a-z0-9]+-[a-z0-9-]+$/i);
     return finalize(base, posts, null);
   } catch (error) {
     return finalize(base, [], errMsg(error));
@@ -391,3 +394,133 @@ async function fetchCompetitorContentPulse(): Promise<CompetitorContent[]> {
 }
 
 export const getCompetitorContentPulse = fetchCompetitorContentPulse;
+
+// ---------- Content gap analysis ----------
+
+/**
+ * The actual deliverable for the content team: what are competitors writing
+ * about that Behold isn't? Feeds every competitor's recent post titles plus
+ * Behold's own into one model call and asks for topics with real coverage
+ * on their side and none on ours.
+ *
+ * Deliberately grounded in post titles rather than the model's general
+ * knowledge of the space, so every gap traces back to something a
+ * competitor actually published.
+ */
+
+const gapSchema = z.object({
+  gaps: z
+    .array(
+      z.object({
+        topic: z.string(),
+        coveredBy: z.array(z.string()),
+        whyItMatters: z.string(),
+        suggestedAngle: z.string(),
+      }),
+    )
+    .min(0)
+    .max(8),
+  beholdStrengths: z.array(z.string()).min(0).max(5),
+});
+
+export type ContentGap = {
+  topic: string;
+  coveredBy: string[];
+  whyItMatters: string;
+  suggestedAngle: string;
+};
+
+export type ContentGapAnalysis = {
+  gaps: ContentGap[];
+  /** Topics Behold covers that competitors don't — worth defending. */
+  beholdStrengths: string[];
+  /** How many posts fed the analysis, for honesty about sample size. */
+  competitorPostCount: number;
+  beholdPostCount: number;
+};
+
+async function fetchContentGaps(): Promise<ContentGapAnalysis> {
+  "use cache: remote";
+  cacheLife("weekly");
+  cacheTag("competitor-content");
+
+  const rows = await fetchCompetitorContentPulse();
+  const behold = rows.find((r) => r.name === "Behold Retreats");
+  const competitors = rows.filter(
+    (r) => r.name !== "Behold Retreats" && r.posts.length > 0,
+  );
+
+  const competitorPostCount = competitors.reduce(
+    (n, c) => n + c.posts.length,
+    0,
+  );
+  const beholdPostCount = behold?.posts.length ?? 0;
+
+  // Nothing to compare against — return an empty analysis rather than
+  // burning a model call on no data.
+  if (competitorPostCount === 0 || beholdPostCount === 0) {
+    return {
+      gaps: [],
+      beholdStrengths: [],
+      competitorPostCount,
+      beholdPostCount,
+    };
+  }
+
+  const competitorBlock = competitors
+    .map(
+      (c) =>
+        `${c.name}:\n${c.posts.map((p) => `  - ${p.title}`).join("\n")}`,
+    )
+    .join("\n\n");
+  const beholdBlock = (behold?.posts ?? [])
+    .map((p) => `  - ${p.title}`)
+    .join("\n");
+
+  const prompt = `You are an SEO content strategist for Behold Retreats, a luxury plant-medicine retreat company (ayahuasca, 5-MeO-DMT, psilocybin) operating in Costa Rica, Mexico, and Portugal. Their audience is nervous first-timers looking for a safe, medically-supervised, high-end experience.
+
+Below are recent blog post titles from Behold and from their direct competitors.
+
+COMPETITOR POSTS:
+${competitorBlock}
+
+BEHOLD'S OWN RECENT POSTS:
+${beholdBlock}
+
+Identify up to 8 CONTENT GAPS: topics or angles that one or more competitors cover and Behold does not. Rules:
+- Ground every gap in titles actually listed above. Do not invent topics nobody wrote about.
+- Skip gaps that are just brand-specific news (someone's retreat center announcement, their own alumni story) since Behold can't and shouldn't copy those.
+- Prefer gaps with genuine search intent behind them.
+- For coveredBy, list only competitor names from the data above.
+- whyItMatters: one sentence on the search/business rationale.
+- suggestedAngle: one concrete post angle that fits Behold's first-timer, safety-forward, luxury positioning.
+
+Also list up to 5 topics Behold covers that competitors do NOT, as beholdStrengths — these are worth defending and expanding.
+
+Be concise. No preamble.`;
+
+  try {
+    const { output } = await generateText({
+      model: "anthropic/claude-sonnet-5",
+      output: Output.object({ schema: gapSchema }),
+      prompt,
+    });
+    return {
+      gaps: output.gaps,
+      beholdStrengths: output.beholdStrengths,
+      competitorPostCount,
+      beholdPostCount,
+    };
+  } catch {
+    // Degrade to an empty analysis rather than breaking the page. The
+    // Content Pulse table above it still renders on its own.
+    return {
+      gaps: [],
+      beholdStrengths: [],
+      competitorPostCount,
+      beholdPostCount,
+    };
+  }
+}
+
+export const getContentGaps = fetchContentGaps;
