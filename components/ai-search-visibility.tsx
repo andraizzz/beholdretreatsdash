@@ -15,11 +15,11 @@ export async function AiSearchVisibility() {
   if (!isAiSearchConfigured()) {
     return (
       <div className="rounded-md border border-dashed p-6 text-sm text-muted-foreground">
-        AI Search visibility isn&apos;t set up yet. Add three API keys as
-        Vercel env vars — <code>ANTHROPIC_API_KEY</code>,{" "}
-        <code>OPENAI_API_KEY</code>, <code>PERPLEXITY_API_KEY</code> — to
-        query how ChatGPT, Claude, and Perplexity answer high-intent retreat
-        prompts. Weekly cached, ~$3/month total cost.
+        AI Search visibility isn&apos;t set up yet. Add{" "}
+        <code>PERPLEXITY_API_KEY</code> as a Vercel env var to see how
+        Perplexity answers high-intent retreat prompts and which brands it
+        names. Weekly cached, roughly $0.30 per generation on your own
+        Perplexity account (not Vercel AI Gateway credits).
       </div>
     );
   }

@@ -19,9 +19,17 @@ export async function WeeklyInsights() {
     insights = await getWeeklyInsights(weekStart);
   } catch (error) {
     return (
-      <div className="rounded-md border border-dashed border-red-300 p-4 text-sm text-red-600">
-        Couldn&apos;t generate this week&apos;s takeaways:{" "}
-        {error instanceof Error ? error.message : String(error)}
+      <div className="rounded-md border border-dashed border-red-300 p-4 text-sm text-red-600 space-y-1">
+        <div>
+          Couldn&apos;t generate this week&apos;s takeaways:{" "}
+          {error instanceof Error ? error.message : String(error)}
+        </div>
+        <div className="text-xs text-red-500">
+          Most common cause: the Vercel AI Gateway credit balance is empty.
+          Check it at Vercel → your team → AI → Top up. Next.js hides the
+          real error in production, so the message above is usually generic;
+          the true cause shows in the Vercel runtime logs.
+        </div>
       </div>
     );
   }

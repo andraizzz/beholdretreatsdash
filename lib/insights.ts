@@ -142,10 +142,14 @@ Write takeaways that identify what's actually notable (biggest movers, which cha
 
   // This result is cached for the whole calendar week (see cacheLife above),
   // so a single malformed generation would otherwise lock the week's
-  // takeaways behind an error until someone manually busts the cache.
-  // Retry a couple of times before giving up — errors aren't cached, only
-  // successful returns are, so a later request would retry anyway; this
-  // just avoids surfacing a transient failure to whoever loads the page.
+  // takeaways behind an error. Retry a couple of times for TRANSIENT
+  // failures (schema-validation misses, blips) before giving up.
+  //
+  // But never retry a permanent failure. On 2026-08-26 a drained Vercel AI
+  // Gateway balance returned 402 insufficient_funds on every call; because
+  // thrown errors are never cached, each page view re-ran this loop and
+  // burned three doomed requests instead of one. Retrying a 402, a 401, or
+  // a malformed-request 400 cannot succeed — it just triples the damage.
   let lastError: unknown;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -160,9 +164,24 @@ Write takeaways that identify what's actually notable (biggest movers, which cha
       };
     } catch (error) {
       lastError = error;
+      if (isPermanentFailure(error)) break;
     }
   }
   throw lastError;
+}
+
+/**
+ * True for errors that will never succeed on retry: billing/auth/permission
+ * problems and malformed requests. The AI SDK surfaces an `isRetryable`
+ * flag on gateway errors; fall back to inspecting the status code when it
+ * isn't present.
+ */
+function isPermanentFailure(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const e = error as { isRetryable?: boolean; statusCode?: number };
+  if (e.isRetryable === false) return true;
+  // 402 payment required, 401/403 auth, 400 bad request.
+  return e.statusCode === 402 || e.statusCode === 401 || e.statusCode === 403 || e.statusCode === 400;
 }
 
 export const getWeeklyInsights = fetchWeeklyInsights;

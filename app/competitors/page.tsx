@@ -20,7 +20,7 @@ export default function CompetitorsPage() {
       <section>
         <SectionTitle
           title="AI Search visibility"
-          subtitle="How ChatGPT, Claude, and Perplexity answer high-intent retreat prompts — where does Behold appear, and who's mentioned alongside? Refreshed weekly."
+          subtitle="How Perplexity answers high-intent retreat prompts — where does Behold appear, and who's mentioned alongside? Refreshed weekly."
         />
         <Suspense fallback={<Skeleton className="h-96" />}>
           <AiSearchVisibility />

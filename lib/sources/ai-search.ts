@@ -4,19 +4,35 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { detectBrandMentions } from "@/lib/brand-mention";
 
 /**
- * AI Search Visibility — asks the three major AI-search touchpoints
- * (ChatGPT / Claude / Perplexity) high-intent retreat queries once a week
- * and detects which brand names appear in each answer. Behold's Typeform
- * data shows ~13%% of applicants cite "AI Search" since the domain launch
- * so this measures a real growing channel.
+ * AI Search Visibility — asks an AI-search engine high-intent retreat
+ * queries and detects which brand names appear in each answer. Behold's
+ * Typeform data shows ~13%% of applicants cite "AI Search" since the domain
+ * launch, so this measures a real and growing channel.
  *
- * Provider routing:
- * - Anthropic (Claude): AI SDK + Vercel AI Gateway. Uses the existing
- *   gateway integration that insights.ts already relies on — no new
- *   ANTHROPIC_API_KEY needed. The web_search tool comes from the
- *   @ai-sdk/anthropic provider and is passed through the gateway.
- * - OpenAI + Perplexity: direct fetch. Neither has AI Gateway passthrough
- *   for their web-enabled search APIs today; both need their own API keys.
+ * COST HISTORY (2026-08-26): this originally queried ChatGPT + Claude +
+ * Perplexity, 24 calls per generation. Claude ran through the Vercel AI
+ * Gateway and was by far the most expensive leg: its web_search tool bills
+ * $10/1,000 searches (we allowed 5 per query = up to 40 searches) AND
+ * injects every search result into context, ballooning input tokens. A full
+ * generation cost roughly $1.00-1.50, not the ~$0.30 originally estimated.
+ *
+ * That compounded badly with two other facts:
+ *   1. Vercel's remote cache key includes the build ID, so EVERY deploy
+ *      invalidated the weekly cache and the next page view regenerated.
+ *      13 deploys in two weeks meant ~13 full regenerations.
+ *   2. Thrown errors are never cached, so once the Gateway hit a 402 every
+ *      subsequent page view retried the whole thing.
+ * Together those drained a $5 Gateway balance.
+ *
+ * Andra's call: run Perplexity only. It's the cheapest leg (~$0.30 per full
+ * generation), it's purpose-built for search, and critically it uses her own
+ * PERPLEXITY_API_KEY rather than Vercel Gateway credits — so AI Search no
+ * longer competes with weekly insights for the same balance.
+ *
+ * The ChatGPT and Claude callers below are intentionally kept but unwired.
+ * To re-enable either, add it back to AI_PROVIDERS and update
+ * isAiSearchConfigured() to require its key. Be deliberate about it: Claude
+ * in particular is ~5x the cost of Perplexity for this workload.
  */
 
 /**
@@ -39,7 +55,13 @@ export const AI_SEARCH_QUERIES = [
 
 export type AiProvider = "chatgpt" | "claude" | "perplexity";
 
-export const AI_PROVIDERS: AiProvider[] = ["chatgpt", "claude", "perplexity"];
+/**
+ * Active providers. Perplexity-only as of 2026-08-26 — see the cost note at
+ * the top of this file. Adding "claude" back here also requires Vercel AI
+ * Gateway credits; adding "chatgpt" requires OPENAI_API_KEY to have balance.
+ * Update isAiSearchConfigured() to match whenever this changes.
+ */
+export const AI_PROVIDERS: AiProvider[] = ["perplexity"];
 
 export const AI_PROVIDER_LABELS: Record<AiProvider, string> = {
   chatgpt: "ChatGPT",
@@ -64,10 +86,10 @@ export type AiSearchSummary = {
 };
 
 export function isAiSearchConfigured(): boolean {
-  // Anthropic routes via Vercel AI Gateway (same integration insights uses)
-  // so it doesn't need a direct provider key here. Only OpenAI + Perplexity
-  // require their own credentials.
-  return Boolean(process.env.OPENAI_API_KEY && process.env.PERPLEXITY_API_KEY);
+  // Perplexity-only (see cost note at top). Deliberately does NOT require
+  // OPENAI_API_KEY any more — requiring a key we no longer call would dark
+  // the whole section for no reason.
+  return Boolean(process.env.PERPLEXITY_API_KEY);
 }
 
 // ---------- Provider callers ----------
