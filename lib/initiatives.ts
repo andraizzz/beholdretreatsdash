@@ -182,17 +182,41 @@ export const INITIATIVES: Initiative[] = [
   },
   {
     id: "prove-or-kill-paid-spend",
-    title: "Prove or kill the $140/wk paid spend",
+    title: "Fix or kill the Costa Rica News spend ($85/wk)",
     description:
-      "Neither Bing Ads ($55/wk) nor Costa Rica News X Ads ($85/wk) has attribution clean enough to know if they produce a single application. Add campaign-specific UTMs or a dedicated landing page so Typeform can attribute conversions back. Then keep or kill each based on evidence, not gut feel.",
+      "Both paid channels ARE tracked (we assumed otherwise until 2026-08-26). Bing shows up as GA4 'Paid Search' (source: Bing) and is performing fine at ~$0.62/session. Costa Rica News shows up as GA4 'Display' (source: CRNews) at ~$20.44/session, 33x worse. The CR News structure is X ads pointing at a CR News article about Costa Rica wellness, which banners and hyperlinks to Behold. The ads work; the article-to-Behold handoff does not. Roughly 4,554 people/month reach the article and 18 reach Behold, a 0.4% pass-through where 2-5% is normal. Awareness spillover isn't detectable either: branded search sits at 44 impressions/month. Decision: fix the pass-through, or keep the article (free backlink + credibility) and stop paying to promote it.",
     owner: "Andra",
-    status: "not_started",
+    status: "in_progress",
     startedAt: KICKOFF,
     targetAt: "2026-10-01",
-    metric: "Applications attributable to Bing / CR News via UTMs or landing page",
+    metric:
+      "CR News article-to-Behold pass-through rate (target 3%+) and cost per Behold session (target under $3)",
     manualProgress:
-      "Total spend running ~$605/mo; attributed applications: unknown",
-    notes: [],
+      "Bing healthy at ~$0.62/session — leave alone. CR News at ~$20.44/session with 0.4% pass-through — needs the fixes below or the ad spend gets cut.",
+    tasks: [
+      {
+        done: false,
+        text: "Move the Behold banner above the fold in the CR News article and add a hyperlink in the first two paragraphs (currently the handoff is losing 99.6% of readers).",
+      },
+      {
+        done: false,
+        text: "Rewrite the CTA to be specific — \"Apply for a Costa Rica retreat\" converts better than a logo or a generic brand mention.",
+      },
+      {
+        done: false,
+        text: "Check whether the Behold link in the CR News article is dofollow or nofollow. If dofollow, the SEO value is real and ongoing, which is an argument for keeping the article even if the ad spend gets cut.",
+      },
+      {
+        done: false,
+        text: "Set a 30-day decision deadline: if pass-through is still under 3% by 2026-10-01, cut the $85/wk and redirect it to Bing (currently 33x more efficient per session).",
+      },
+    ],
+    notes: [
+      {
+        date: "2026-08-26",
+        text: "Found that GA4 'Display' channel = CR News X Ads (not Google Ads). Both paid channels have working UTMs, so attribution was never the problem — the article-to-click handoff is.",
+      },
+    ],
   },
 ];
 
