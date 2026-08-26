@@ -338,40 +338,128 @@ function finalize(
   };
 }
 
-// ---------- LLM topic clustering ----------
+// ---------- Combined LLM pass: per-competitor topics + cross-competitor gaps ----------
 
-const topicSchema = z.object({
-  topics: z.array(z.string()).min(0).max(5),
+/**
+ * ONE model call produces both outputs. Previously this was 5 calls: four
+ * separate topic-clustering calls (one per competitor) plus a fifth for gap
+ * analysis — all fed essentially the same input, every competitor's recent
+ * post titles. Merging them cut 5 calls to 1 with no loss of output, and
+ * removed a double-execution hazard where the gap analysis re-triggered the
+ * whole site-fetching pass.
+ */
+const analysisSchema = z.object({
+  perCompetitor: z.array(
+    z.object({
+      name: z.string(),
+      topics: z.array(z.string()).min(0).max(5),
+    }),
+  ),
+  gaps: z
+    .array(
+      z.object({
+        topic: z.string(),
+        coveredBy: z.array(z.string()),
+        whyItMatters: z.string(),
+        suggestedAngle: z.string(),
+      }),
+    )
+    .min(0)
+    .max(8),
+  beholdStrengths: z.array(z.string()).min(0).max(5),
 });
 
-async function clusterTopics(
-  competitorName: string,
-  posts: BlogPost[],
-): Promise<string[]> {
-  if (posts.length === 0) return [];
-  const titles = posts.slice(0, 10).map((p) => `- ${p.title}`).join("\n");
-  const prompt = `Below are recent blog post titles from ${competitorName}, a plant medicine retreat center. Cluster them into 2-5 concise topic themes (each 2-6 words). Return themes only, no explanation, no numbering, no punctuation. Skip generic themes like "wellness" — prefer specific ones like "ayahuasca preparation" or "post-retreat integration".
+type CombinedAnalysis = z.infer<typeof analysisSchema>;
 
-Titles:
-${titles}`;
+export type ContentGap = {
+  topic: string;
+  coveredBy: string[];
+  whyItMatters: string;
+  suggestedAngle: string;
+};
+
+export type ContentGapAnalysis = {
+  gaps: ContentGap[];
+  /** Topics Behold covers that competitors don't — worth defending. */
+  beholdStrengths: string[];
+  /** Sample sizes, so the UI can be honest about a thin week. */
+  competitorPostCount: number;
+  beholdPostCount: number;
+};
+
+const EMPTY_ANALYSIS: CombinedAnalysis = {
+  perCompetitor: [],
+  gaps: [],
+  beholdStrengths: [],
+};
+
+async function analyzeAllContent(
+  all: CompetitorContent[],
+): Promise<CombinedAnalysis> {
+  const withPosts = all.filter((c) => c.posts.length > 0);
+  if (withPosts.length === 0) return EMPTY_ANALYSIS;
+
+  const block = withPosts
+    .map(
+      (c) =>
+        `${c.name}${c.name === "Behold Retreats" ? " (US — our own site)" : ""}:\n${c.posts
+          .slice(0, 12)
+          .map((p) => `  - ${p.title}`)
+          .join("\n")}`,
+    )
+    .join("\n\n");
+
+  const prompt = `You are an SEO content strategist for Behold Retreats, a luxury plant-medicine retreat company (ayahuasca, 5-MeO-DMT, psilocybin) in Costa Rica, Mexico, and Portugal. Their audience is nervous first-timers wanting a safe, medically-supervised, high-end experience.
+
+Recent blog post titles, grouped by site:
+
+${block}
+
+Produce three things:
+
+1. perCompetitor — for EVERY site listed above (including Behold), 2-5 concise topic themes (2-6 words each) summarizing what they write about. Use the exact site names as given. Prefer specific themes ("post-retreat integration") over generic ones ("wellness").
+
+2. gaps — up to 8 topics that one or more COMPETITORS cover and Behold does not. Rules:
+   - Ground every gap in titles actually listed above. Do not invent topics nobody wrote about.
+   - Skip brand-specific news (their own alumni stories, their center announcements) — Behold can't act on those.
+   - Prefer gaps with genuine search intent.
+   - coveredBy: only competitor names from the data above.
+   - whyItMatters: one sentence of search/business rationale.
+   - suggestedAngle: one concrete post angle fitting Behold's first-timer, safety-forward, luxury positioning.
+
+3. beholdStrengths — up to 5 topics Behold covers that competitors do NOT. Worth defending.
+
+Be concise. No preamble.`;
 
   try {
     const { output } = await generateText({
       model: "anthropic/claude-sonnet-5",
-      output: Output.object({ schema: topicSchema }),
+      output: Output.object({ schema: analysisSchema }),
       prompt,
     });
-    return output.topics.slice(0, 5);
+    return output;
   } catch {
-    // Topic clustering is nice-to-have — degrade to empty rather than fail
-    // the whole content pulse if the LLM call errors.
-    return [];
+    // Analysis is additive — degrade to empty rather than breaking the
+    // content pulse table, which is useful on its own.
+    return EMPTY_ANALYSIS;
   }
 }
 
 // ---------- Public ----------
 
-async function fetchCompetitorContentPulse(): Promise<CompetitorContent[]> {
+/**
+ * Single source of truth for everything content-related: fetches all four
+ * blogs, runs the one combined analysis call, and returns rows plus gaps.
+ * Both the Content Pulse table and the Content Gaps section read from this,
+ * so the expensive work happens exactly once per cache entry.
+ */
+async function fetchCompetitorContent(): Promise<{
+  rows: CompetitorContent[];
+  gaps: ContentGap[];
+  beholdStrengths: string[];
+  competitorPostCount: number;
+  beholdPostCount: number;
+}> {
   "use cache: remote";
   cacheLife("weekly");
   cacheTag("competitor-content");
@@ -384,12 +472,21 @@ async function fetchCompetitorContentPulse(): Promise<CompetitorContent[]> {
   ]);
 
   const withBlogs = [soltara, newLife, rythmia, behold];
-  const withTopics = await Promise.all(
-    withBlogs.map(async (c) => ({
-      ...c,
-      topics: await clusterTopics(c.name, c.posts),
-    })),
+  const analysis = await analyzeAllContent(withBlogs);
+
+  const topicsByName = new Map(
+    analysis.perCompetitor.map((p) => [p.name, p.topics]),
   );
+  const withTopics = withBlogs.map((c) => ({
+    ...c,
+    topics: topicsByName.get(c.name) ?? [],
+  }));
+
+  const competitorPostCount = withBlogs
+    .filter((c) => c.name !== "Behold Retreats")
+    .reduce((n, c) => n + c.posts.length, 0);
+  const beholdPostCount =
+    withBlogs.find((c) => c.name === "Behold Retreats")?.posts.length ?? 0;
 
   const noBlogs = [
     noBlog("Posada Natura", "posadanatura.org"),
@@ -407,137 +504,26 @@ async function fetchCompetitorContentPulse(): Promise<CompetitorContent[]> {
     ...noBlogs,
   ];
 
-  return ordered;
+  return {
+    rows: ordered,
+    gaps: analysis.gaps,
+    beholdStrengths: analysis.beholdStrengths,
+    competitorPostCount,
+    beholdPostCount,
+  };
 }
 
-export const getCompetitorContentPulse = fetchCompetitorContentPulse;
+export const getCompetitorContent = fetchCompetitorContent;
 
-// ---------- Content gap analysis ----------
-
-/**
- * The actual deliverable for the content team: what are competitors writing
- * about that Behold isn't? Feeds every competitor's recent post titles plus
- * Behold's own into one model call and asks for topics with real coverage
- * on their side and none on ours.
- *
- * Deliberately grounded in post titles rather than the model's general
- * knowledge of the space, so every gap traces back to something a
- * competitor actually published.
- */
-
-const gapSchema = z.object({
-  gaps: z
-    .array(
-      z.object({
-        topic: z.string(),
-        coveredBy: z.array(z.string()),
-        whyItMatters: z.string(),
-        suggestedAngle: z.string(),
-      }),
-    )
-    .min(0)
-    .max(8),
-  beholdStrengths: z.array(z.string()).min(0).max(5),
-});
-
-export type ContentGap = {
-  topic: string;
-  coveredBy: string[];
-  whyItMatters: string;
-  suggestedAngle: string;
-};
-
-export type ContentGapAnalysis = {
-  gaps: ContentGap[];
-  /** Topics Behold covers that competitors don't — worth defending. */
-  beholdStrengths: string[];
-  /** How many posts fed the analysis, for honesty about sample size. */
-  competitorPostCount: number;
-  beholdPostCount: number;
-};
-
-async function fetchContentGaps(): Promise<ContentGapAnalysis> {
-  "use cache: remote";
-  cacheLife("weekly");
-  cacheTag("competitor-content");
-
-  const rows = await fetchCompetitorContentPulse();
-  const behold = rows.find((r) => r.name === "Behold Retreats");
-  const competitors = rows.filter(
-    (r) => r.name !== "Behold Retreats" && r.posts.length > 0,
-  );
-
-  const competitorPostCount = competitors.reduce(
-    (n, c) => n + c.posts.length,
-    0,
-  );
-  const beholdPostCount = behold?.posts.length ?? 0;
-
-  // Nothing to compare against — return an empty analysis rather than
-  // burning a model call on no data.
-  if (competitorPostCount === 0 || beholdPostCount === 0) {
-    return {
-      gaps: [],
-      beholdStrengths: [],
-      competitorPostCount,
-      beholdPostCount,
-    };
-  }
-
-  const competitorBlock = competitors
-    .map(
-      (c) =>
-        `${c.name}:\n${c.posts.map((p) => `  - ${p.title}`).join("\n")}`,
-    )
-    .join("\n\n");
-  const beholdBlock = (behold?.posts ?? [])
-    .map((p) => `  - ${p.title}`)
-    .join("\n");
-
-  const prompt = `You are an SEO content strategist for Behold Retreats, a luxury plant-medicine retreat company (ayahuasca, 5-MeO-DMT, psilocybin) operating in Costa Rica, Mexico, and Portugal. Their audience is nervous first-timers looking for a safe, medically-supervised, high-end experience.
-
-Below are recent blog post titles from Behold and from their direct competitors.
-
-COMPETITOR POSTS:
-${competitorBlock}
-
-BEHOLD'S OWN RECENT POSTS:
-${beholdBlock}
-
-Identify up to 8 CONTENT GAPS: topics or angles that one or more competitors cover and Behold does not. Rules:
-- Ground every gap in titles actually listed above. Do not invent topics nobody wrote about.
-- Skip gaps that are just brand-specific news (someone's retreat center announcement, their own alumni story) since Behold can't and shouldn't copy those.
-- Prefer gaps with genuine search intent behind them.
-- For coveredBy, list only competitor names from the data above.
-- whyItMatters: one sentence on the search/business rationale.
-- suggestedAngle: one concrete post angle that fits Behold's first-timer, safety-forward, luxury positioning.
-
-Also list up to 5 topics Behold covers that competitors do NOT, as beholdStrengths — these are worth defending and expanding.
-
-Be concise. No preamble.`;
-
-  try {
-    const { output } = await generateText({
-      model: "anthropic/claude-sonnet-5",
-      output: Output.object({ schema: gapSchema }),
-      prompt,
-    });
-    return {
-      gaps: output.gaps,
-      beholdStrengths: output.beholdStrengths,
-      competitorPostCount,
-      beholdPostCount,
-    };
-  } catch {
-    // Degrade to an empty analysis rather than breaking the page. The
-    // Content Pulse table above it still renders on its own.
-    return {
-      gaps: [],
-      beholdStrengths: [],
-      competitorPostCount,
-      beholdPostCount,
-    };
-  }
+/** Content Pulse table reads just the rows. */
+export async function getCompetitorContentPulse(): Promise<CompetitorContent[]> {
+  return (await fetchCompetitorContent()).rows;
 }
 
-export const getContentGaps = fetchContentGaps;
+/** Content Gaps section reads the analysis half. Same cache entry as the
+ *  pulse above, so this costs nothing extra. */
+export async function getContentGaps(): Promise<ContentGapAnalysis> {
+  const { gaps, beholdStrengths, competitorPostCount, beholdPostCount } =
+    await fetchCompetitorContent();
+  return { gaps, beholdStrengths, competitorPostCount, beholdPostCount };
+}
