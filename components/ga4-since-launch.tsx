@@ -52,12 +52,13 @@ export async function Ga4SinceLaunch() {
           subtitle={`${DOMAIN_LAUNCH_DATE} → yesterday (${daysAgo(DOMAIN_LAUNCH_DATE)} full days — today is excluded while it's still in progress)`}
         />
         <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-          GA4 key event tracking has been broken repeatedly. Latest fix
-          attempt was {KEY_EVENTS_FIXED_DATE}, not yet verified working —
-          the &ldquo;Key events&rdquo; number here is GA4&apos;s count and
-          shouldn&apos;t be trusted until it roughly matches Typeform
-          applications. Typeform is the trusted source for how many people
-          actually applied.
+          GA4 key-event tracking has been reconfigured multiple times.
+          Latest change {KEY_EVENTS_FIXED_DATE}. On 2026-08-20 and
+          2026-08-23 the definition briefly included non-conversion
+          engagement events (page clicks), which produced misleading
+          ~20/day spikes — those are NOT real applications. Use this
+          number as a directional gauge only; Typeform is the trusted
+          source for actual application counts.
         </div>
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <MetricCard label="Sessions" value={formatNumber(totals.sessions)} />
@@ -69,7 +70,7 @@ export async function Ga4SinceLaunch() {
           <MetricCard
             label="Key events"
             value={formatNumber(totals.keyEvents)}
-            hint="unreliable before Aug 4"
+            hint="directional only — includes 8/20 & 8/23 spikes from a broken key-event config"
           />
         </div>
       </section>

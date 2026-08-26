@@ -247,15 +247,40 @@ export const getGa4Summary = fetchGa4Summary;
 export const DOMAIN_LAUNCH_DATE = "2026-07-14";
 /**
  * Latest attempted fix date for GA4 key-event tracking. This has been
- * broken multiple times — Aug 4 attempt didn't take (zero events in the
- * days after), Aug 10 attempt also failed (still all misattributed to
- * "Email"), Aug 17 is the latest attempt, still being verified.
- * Do NOT treat GA4 key events / conversions as authoritative until the
- * count roughly matches Typeform applications week-over-week AND the
- * channel breakdown looks sane (not all bucketed under Email).
- * Applications count on the dashboard comes from Typeform, not this metric.
+ * broken and mis-fixed multiple times:
+ *  - 2026-08-04: first attempt, didn't take (zero events after)
+ *  - 2026-08-10: second attempt, all events misattributed to "Email"
+ *  - 2026-08-17: third attempt tracked more events but the dev flagged too
+ *    many events as "key events" (likely page clicks / engagement events),
+ *    which produced misleading spikes on 2026-08-20 and 2026-08-23 (~20
+ *    apparent "applications" per day when Behold has never had that in a
+ *    single day). Extra key-event definitions removed after that.
+ *
+ * Practical rule: use GA4 key events as a DIRECTIONAL gauge of what's
+ * performing (relative movements are still meaningful), but do NOT cite
+ * the raw count as literal application count. Typeform is the trusted
+ * source for real application counts everywhere on the dashboard.
  */
 export const KEY_EVENTS_FIXED_DATE = "2026-08-17";
+
+/**
+ * Days when GA4 key-event data was known to be corrupted by tracking
+ * misconfiguration — a temporary over-broad key-event definition inflated
+ * the count. Any UI that surfaces per-day key events should visually flag
+ * these dates so nobody misreads the spike as a real conversion win.
+ */
+export const KNOWN_BAD_KEY_EVENT_DAYS: { date: string; reason: string }[] = [
+  {
+    date: "2026-08-20",
+    reason:
+      "GA4 key-event definition temporarily included non-conversion engagement events; spike is not real applications.",
+  },
+  {
+    date: "2026-08-23",
+    reason:
+      "GA4 key-event definition temporarily included non-conversion engagement events; spike is not real applications.",
+  },
+];
 
 /** The site's own domains — a "top source" matching one of these is a self-referral, not real inbound traffic. */
 export const SITE_DOMAINS = ["beholdretreats.com", "behold-retreats.com"];

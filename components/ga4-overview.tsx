@@ -146,7 +146,7 @@ export async function Ga4Overview({ days = 7 }: { days?: number }) {
           <MetricCard
             label="Key events"
             value={formatNumber(totals.keyEvents)}
-            hint={`GA4 tracking unreliable — verify vs. Typeform (last fix attempt ${KEY_EVENTS_FIXED_DATE})`}
+            hint={`Directional signal only — GA4 key events have included non-application engagement (page clicks, etc.) in the past. Trust Typeform for real application counts. Last config change ${KEY_EVENTS_FIXED_DATE}.`}
           />
         </div>
       </section>
