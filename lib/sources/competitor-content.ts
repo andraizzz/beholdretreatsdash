@@ -211,10 +211,27 @@ async function fetchRythmia(): Promise<CompetitorContent> {
     // Note the www: rythmia.com/sitemap.xml 301-redirects to www, and the
     // redirect follow has been unreliable from Vercel's cloud IPs.
     const xml = await fetchText("https://www.rythmia.com/sitemap.xml");
-    // Category pages (/blog/ayahuasca, /blog/prep, /blog/stories) share the
-    // same path prefix as posts. Categories are single-word slugs; posts are
-    // multi-word hyphenated — so require at least one hyphen.
-    const posts = parseSitemapUrls(xml, /\/blog\/[a-z0-9]+-[a-z0-9-]+$/i);
+    // Category pages share the same path prefix as posts. Most are
+    // single-word slugs so the hyphen requirement filters them, but
+    // "costa-rica" is hyphenated and slipped through, polluting the topic
+    // clustering and gap analysis with a meaningless "Costa Rica" title.
+    // Deny-list the known category slugs explicitly.
+    const RYTHMIA_CATEGORY_SLUGS = new Set([
+      "ayahuasca",
+      "costa-rica",
+      "integration",
+      "leadership",
+      "prep",
+      "program",
+      "safety",
+      "stories",
+    ]);
+    const posts = parseSitemapUrls(xml, /\/blog\/[a-z0-9]+-[a-z0-9-]+$/i).filter(
+      (p) => {
+        const slug = p.url.replace(/\/$/, "").split("/blog/")[1] ?? "";
+        return !RYTHMIA_CATEGORY_SLUGS.has(slug);
+      },
+    );
     return finalize(base, posts, null);
   } catch (error) {
     return finalize(base, [], errMsg(error));
