@@ -10,10 +10,8 @@ export default function InitiativesPage() {
     <div className="space-y-8">
       <div>
         <h1 className="font-heading text-3xl tracking-tight">Initiatives</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          What we&apos;re running for the next 3 months — half tied to live
-          dashboard data, half updated by hand. See what&apos;s performing and
-          what isn&apos;t.
+        <p className="text-base text-muted-foreground mt-1">
+          3-month plan: Aug 12 → Nov 12, 2026
         </p>
       </div>
 
@@ -25,14 +23,6 @@ export default function InitiativesPage() {
         <InitiativesList />
       </Suspense>
 
-      <div className="rounded-md border border-dashed p-4 text-xs text-muted-foreground">
-        Updates flow via chat: tell me the new number for a manual metric
-        (&ldquo;we&apos;ve contacted 5 companies&rdquo;) or a status change
-        (&ldquo;Primal Focus launched&rdquo;), and I edit{" "}
-        <code>lib/initiatives.ts</code> + redeploy. Live-metric rows pull
-        automatically from GA4, Typeform, Places, and AI Search on the weekly
-        cache — no manual update needed for those.
-      </div>
     </div>
   );
 }

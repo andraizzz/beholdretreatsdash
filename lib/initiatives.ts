@@ -44,6 +44,8 @@ export type Initiative = {
   metric: string;
   /** Manual progress number/text updated by Andra via chat. */
   manualProgress: string;
+  /** Short, hard-fact bullets for the executive view of the card (1 line each). */
+  highlights: string[];
   /** Optional live-data pull. If set, the card also renders this alongside manualProgress. */
   liveMetric?: LiveMetricKind;
   /** Optional actionable checklist rendered on the card. Toggle `done` when items complete. */
@@ -62,6 +64,7 @@ export const INITIATIVES: Initiative[] = [
     title: "B2B outreach — 20 companies",
     description:
       "Reach out to HR departments and decision-makers at 20 companies we think would be open to sending employees to Behold retreats (executive wellness, leadership development, etc.).",
+    highlights: ["0 of 20 companies contacted so far"],
     owner: "Andra",
     status: "not_started",
     startedAt: KICKOFF,
@@ -75,6 +78,7 @@ export const INITIATIVES: Initiative[] = [
     title: "LinkedIn SEO-keyword content",
     description:
       "Start LinkedIn post copy with keywords we're SEO-optimizing for. Testing whether LinkedIn authority signals help move Google organic rankings for the same terms.",
+    highlights: ["0 posts published so far", "Target keyword list still to be defined"],
     owner: "Andra",
     status: "not_started",
     startedAt: KICKOFF,
@@ -89,6 +93,7 @@ export const INITIATIVES: Initiative[] = [
     title: "Primal Focus newsletter partnership",
     description:
       "Newsletter partnership with Primal Focus (microdosing company). Cross-promotion to their subscriber base with a link back to Behold.",
+    highlights: ["Launch day brought ~400 visits in a single day", "474 new visitors from the newsletter", "Big awareness win", "No applications yet — retarget this audience later"],
     owner: "Andra",
     status: "complete",
     startedAt: KICKOFF,
@@ -114,6 +119,7 @@ export const INITIATIVES: Initiative[] = [
     title: "Close the Social attribution gap",
     description:
       "GA4 sees ~3% of traffic from Social; applicants self-report ~17%. That 14pt gap points at broken UTMs on Instagram/social links. Fix the tagging so real social traffic gets counted.",
+    highlights: ["GA4 sees ~3% social traffic; applicants say ~17%", "Not started — UTM audit needed"],
     owner: "Andra",
     status: "not_started",
     startedAt: KICKOFF,
@@ -129,6 +135,7 @@ export const INITIATIVES: Initiative[] = [
     title: "Target AI Search white space",
     description:
       "AI Search visibility scan revealed queries where nobody in the plant-medicine set appears — 'psilocybin retreat with medical oversight' and 'ayahuasca retreat portugal legal' are open territory. Also defend the queries where Behold already wins outright (5-MeO CR, women's ayahuasca). Publish content targeted at these.",
+    highlights: ["Behold appears in 5 of 12 AI answer slots (baseline)", "No new content published yet"],
     owner: "Content team",
     status: "not_started",
     startedAt: KICKOFF,
@@ -152,6 +159,7 @@ export const INITIATIVES: Initiative[] = [
     title: "Push Google rating from 4.8★ → 4.9★",
     description:
       "Behold currently sits at 4.8★. Per Andra's math, 14 more 5-star reviews would tip the rounded average to 4.9 — closing a real perceived-quality gap with Soltara (4.9) at the same time. Review volume is also small overall vs. Rythmia (410) and Soltara (287), so this doubles as a volume push. A simple post-retreat 'leave us a Google review' ask (email or QR at checkout) should close this fast — the underlying satisfaction is clearly already there.",
+    highlights: ["Google rating: 4.8★ → 4.9★", "Reviews: 39 → 45 (+15%)"],
     owner: "Ops / Retreat team",
     status: "complete",
     startedAt: KICKOFF,
@@ -176,6 +184,7 @@ export const INITIATIVES: Initiative[] = [
     title: "Blog updates & refreshes",
     description:
       "Punch-list of specific blog work: merging duplicate pages that split ranking authority, refreshing stale copy and stats on high-traffic posts, and consolidating overlapping content. Blog is Behold's biggest organic asset (43-50% of traffic per the marketing pie) — every duplicate or dated page is leaving ranking + conversion on the table.",
+    highlights: ["Merging duplicate 'what is ayahuasca' pages"],
     owner: "Content team",
     status: "not_started",
     startedAt: KICKOFF,
@@ -196,6 +205,7 @@ export const INITIATIVES: Initiative[] = [
     title: "Fix or kill the Costa Rica News spend ($85/wk)",
     description:
       "Both paid channels ARE tracked (we assumed otherwise until 2026-08-26). Bing shows up as GA4 'Paid Search' (source: Bing) and is performing fine at ~$0.62/session. Costa Rica News shows up as GA4 'Display' (source: CRNews) at ~$20.44/session, 33x worse. The CR News structure is X ads pointing at a CR News article about Costa Rica wellness, which banners and hyperlinks to Behold. The ads work; the article-to-Behold handoff does not. Roughly 4,554 people/month reach the article and 18 reach Behold, a 0.4% pass-through where 2-5% is normal. Awareness spillover isn't detectable either: branded search sits at 44 impressions/month. Decision: fix the pass-through, or keep the article (free backlink + credibility) and stop paying to promote it.",
+    highlights: ["Decision date (Oct 1) has passed", "Last week: 11 conversions on $383 ($34.86 each)", "X Ads: 0 conversions on $38", "ChatGPT ads: applications denied so far"],
     owner: "Andra",
     status: "in_progress",
     startedAt: KICKOFF,
