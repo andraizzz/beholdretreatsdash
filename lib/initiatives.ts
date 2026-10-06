@@ -96,7 +96,7 @@ export const INITIATIVES: Initiative[] = [
     metric:
       "Referral sessions from primalfocus.com in GA4 + applicants citing them",
     manualProgress:
-      "Launched — a successful awareness play (traffic spike; see live GA4 numbers alongside). No applications or key events attributed to Primal-tagged traffic, so this was top-of-funnel, not conversion.",
+      "Launched Sep 17 — a successful awareness play. 474 users from PrimalFocus / email (GA4, Sep 8–Oct 5), ~360 on the Sep 17 peak day. 0 key events and no applications from Primal-tagged traffic, so this was top-of-funnel, not conversion.",
     liveMetric: {
       kind: "referral_domain",
       domain: "primalfocus.com",
@@ -105,7 +105,7 @@ export const INITIATIVES: Initiative[] = [
     notes: [
       {
         date: "2026-10-06",
-        text: "Marked complete. Awareness spike was strong, but nothing with 'primal' in the UTM source/campaign has produced an application or key event. Worth retargeting this audience later down the line.",
+        text: "Marked complete. GA4 (first user source / medium = PrimalFocus / email, last 28 days to Oct 5): 474 total users (476 new, 72 returning), 3,204 events, 58s average engagement time, 0 key events. Traffic spiked on Sep 17 (~360 users) then fell to a low trickle within days. Nothing tagged 'primal' has produced an application or key event. Strong awareness play; worth retargeting this audience later.",
       },
     ],
   },
