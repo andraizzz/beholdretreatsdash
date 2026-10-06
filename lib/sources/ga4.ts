@@ -656,3 +656,98 @@ async function fetchGa4Rolling(weeks: number): Promise<Ga4RollingSummary> {
 }
 
 export const getGa4Rolling = fetchGa4Rolling;
+
+export type Ga4TagMatch = {
+  sessions: number;
+  totalUsers: number;
+  keyEvents: number;
+  peakDay: { date: string; sessions: number } | null;
+  /** Distinct source / medium / campaign combos that matched, busiest first. */
+  rows: { source: string; medium: string; campaign: string; sessions: number; keyEvents: number }[];
+};
+
+/**
+ * Traffic since `sinceDate` whose source OR campaign (UTM) contains `needle`,
+ * case-insensitive. Used to track a partnership (e.g. "primal") whether it
+ * arrives as a referral or as UTM-tagged newsletter clicks.
+ */
+async function fetchGa4TagMatch(
+  needle: string,
+  sinceDate: string,
+): Promise<Ga4TagMatch> {
+  "use cache";
+  cacheLife("dashboard");
+  cacheTag("ga4");
+
+  const conn = getClient();
+  if (!conn) throw new Error("GA4 is not configured");
+  const { client, propertyId } = conn;
+
+  const dateRanges = [{ startDate: sinceDate, endDate: isoDate(yesterday()) }];
+  const contains = (fieldName: string) => ({
+    filter: {
+      fieldName,
+      stringFilter: { matchType: "CONTAINS" as const, value: needle, caseSensitive: false },
+    },
+  });
+  const dimensionFilter = {
+    orGroup: {
+      expressions: [contains("sessionSource"), contains("sessionCampaignName")],
+    },
+  };
+  const num = (v: string | null | undefined) => Number(v ?? 0);
+
+  const [byTag, byDay] = await Promise.all([
+    client.runReport({
+      property: `properties/${propertyId}`,
+      dateRanges,
+      dimensionFilter,
+      dimensions: [
+        { name: "sessionSource" },
+        { name: "sessionMedium" },
+        { name: "sessionCampaignName" },
+      ],
+      metrics: [{ name: "sessions" }, { name: "totalUsers" }, { name: "keyEvents" }],
+      orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+      limit: 25,
+    }),
+    client.runReport({
+      property: `properties/${propertyId}`,
+      dateRanges,
+      dimensionFilter,
+      dimensions: [{ name: "date" }],
+      metrics: [{ name: "sessions" }],
+      orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+      limit: 1,
+    }),
+  ]);
+
+  const rows = (byTag[0].rows ?? []).map((r) => ({
+    source: r.dimensionValues?.[0]?.value || "(not set)",
+    medium: r.dimensionValues?.[1]?.value || "(not set)",
+    campaign: r.dimensionValues?.[2]?.value || "(not set)",
+    sessions: num(r.metricValues?.[0]?.value),
+    keyEvents: num(r.metricValues?.[2]?.value),
+  }));
+  // Users summed across rows is an upper bound (a user can span rows).
+  const totalUsers = (byTag[0].rows ?? []).reduce(
+    (a, r) => a + num(r.metricValues?.[1]?.value),
+    0,
+  );
+  const peakRaw = byDay[0].rows?.[0];
+  const d = peakRaw?.dimensionValues?.[0]?.value ?? "";
+  return {
+    sessions: rows.reduce((a, r) => a + r.sessions, 0),
+    totalUsers,
+    keyEvents: rows.reduce((a, r) => a + r.keyEvents, 0),
+    peakDay: peakRaw
+      ? {
+          date: `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`,
+          sessions: num(peakRaw.metricValues?.[0]?.value),
+        }
+      : null,
+    rows,
+  };
+}
+
+export const getGa4TagMatch = fetchGa4TagMatch;

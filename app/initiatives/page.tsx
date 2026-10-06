@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { getInitiatives } from "@/lib/initiatives";
+import { getInitiatives, getWindowProgress } from "@/lib/initiatives";
 import { resolveLiveMetric } from "@/lib/initiatives-live";
 import { InitiativeCard } from "@/components/initiative-card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +16,10 @@ export default function InitiativesPage() {
           what isn&apos;t.
         </p>
       </div>
+
+      <Suspense fallback={<Skeleton className="h-28" />}>
+        <ProgressBanner />
+      </Suspense>
 
       <Suspense fallback={<InitiativesSkeleton />}>
         <InitiativesList />
@@ -62,6 +66,50 @@ function InitiativesSkeleton() {
       {Array.from({ length: 7 }).map((_, i) => (
         <Skeleton key={i} className="h-40" />
       ))}
+    </div>
+  );
+}
+
+async function ProgressBanner() {
+  await connection();
+  const { totalDays, elapsed, daysLeft, timePct } = getWindowProgress();
+
+  const all = getInitiatives();
+  const done = all.filter((i) => i.status === "complete").length;
+  const donePct = Math.round((done / all.length) * 100);
+  const ahead = donePct >= timePct;
+
+  return (
+    <div className="rounded-lg border p-4 space-y-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="font-heading text-xl tracking-tight">
+          {daysLeft} days left
+          <span className="text-sm text-muted-foreground font-sans ml-2">
+            day {elapsed} of {totalDays} · ends Nov 12
+          </span>
+        </div>
+        <div
+          className={`text-sm font-medium ${ahead ? "text-emerald-700" : "text-amber-700"}`}
+        >
+          {done} of {all.length} initiatives complete ({donePct}%) vs. {timePct}% of time used
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Bar label="Time elapsed" pct={timePct} color="bg-muted-foreground/50" />
+        <Bar label="Initiatives complete" pct={donePct} color="bg-emerald-500" />
+      </div>
+    </div>
+  );
+}
+
+function Bar({ label, pct, color }: { label: string; pct: number; color: string }) {
+  return (
+    <div className="flex items-center gap-3 text-xs">
+      <div className="w-36 shrink-0 text-muted-foreground">{label}</div>
+      <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <div className="w-10 text-right tabular-nums">{pct}%</div>
     </div>
   );
 }

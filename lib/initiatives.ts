@@ -53,8 +53,8 @@ export type Initiative = {
 };
 
 // Anchor dates: initiative window is Andra's ask for "next 3 months."
-const KICKOFF = "2026-08-12";
-const TARGET = "2026-11-12";
+export const KICKOFF = "2026-08-12";
+export const TARGET = "2026-11-12";
 
 export const INITIATIVES: Initiative[] = [
   {
@@ -90,18 +90,24 @@ export const INITIATIVES: Initiative[] = [
     description:
       "Newsletter partnership with Primal Focus (microdosing company). Cross-promotion to their subscriber base with a link back to Behold.",
     owner: "Andra",
-    status: "not_started",
+    status: "complete",
     startedAt: KICKOFF,
     targetAt: TARGET,
     metric:
       "Referral sessions from primalfocus.com in GA4 + applicants citing them",
-    manualProgress: "Partnership not yet launched",
+    manualProgress:
+      "Launched — a successful awareness play (traffic spike; see live GA4 numbers alongside). No applications or key events attributed to Primal-tagged traffic, so this was top-of-funnel, not conversion.",
     liveMetric: {
       kind: "referral_domain",
       domain: "primalfocus.com",
-      label: "Primal Focus referrals detected in GA4",
+      label: "Primal Focus traffic in GA4 since kickoff",
     },
-    notes: [],
+    notes: [
+      {
+        date: "2026-10-06",
+        text: "Marked complete. Awareness spike was strong, but nothing with 'primal' in the UTM source/campaign has produced an application or key event. Worth retargeting this audience later down the line.",
+      },
+    ],
   },
   {
     id: "social-attribution-fix",
@@ -147,18 +153,23 @@ export const INITIATIVES: Initiative[] = [
     description:
       "Behold currently sits at 4.8★. Per Andra's math, 14 more 5-star reviews would tip the rounded average to 4.9 — closing a real perceived-quality gap with Soltara (4.9) at the same time. Review volume is also small overall vs. Rythmia (410) and Soltara (287), so this doubles as a volume push. A simple post-retreat 'leave us a Google review' ask (email or QR at checkout) should close this fast — the underlying satisfaction is clearly already there.",
     owner: "Ops / Retreat team",
-    status: "not_started",
+    status: "complete",
     startedAt: KICKOFF,
     targetAt: TARGET,
     metric: "Google rating on the Behold Places listing (target 4.9★)",
     manualProgress:
-      "Ask flow not yet set up · goal: 14 more 5-star reviews to reach 4.9★",
+      "Goal hit: Behold is at 4.9★. Reviews grew 39 → 45 (+6, +15%) since the start of the initiative (baseline 39 recorded Aug 18).",
     liveMetric: {
       kind: "review_count",
       brand: "Behold Retreats",
-      targetLabel: "goal: 4.9★ rating — needs ~14 more 5-star reviews",
+      targetLabel: "goal reached: 4.9★ · up from 39 reviews at kickoff",
     },
-    notes: [],
+    notes: [
+      {
+        date: "2026-10-06",
+        text: "Reached 4.9★. Review count 39 → 45 (+15.4%) since kickoff.",
+      },
+    ],
   },
   {
     id: "blog-updates-refreshes",
@@ -213,6 +224,10 @@ export const INITIATIVES: Initiative[] = [
     ],
     notes: [
       {
+        date: "2026-10-06",
+        text: "Past the 10/01 decision date. Lots of discussion and resourcing here; the open question is still where the conversions are. Latest weekly paid data (Sep 28–Oct 4): Google Ads 8 conv / $262.68, Microsoft Ads 3 conv / $82.93, X Ads 0 conv / $37.81 (261 clicks). Combined 11 conv on $383.42 (CPA $34.86) vs. 5.99 conv on $430.73 the week before. Also trying ChatGPT ads, but getting denied left and right.",
+      },
+      {
         date: "2026-08-26",
         text: "Found that GA4 'Display' channel = CR News X Ads (not Google Ads). Both paid channels have working UTMs, so attribution was never the problem — the article-to-click handoff is.",
       },
@@ -222,4 +237,18 @@ export const INITIATIVES: Initiative[] = [
 
 export function getInitiatives(): Initiative[] {
   return INITIATIVES;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Where we are in the 3-month window right now. */
+export function getWindowProgress() {
+  const start = new Date(`${KICKOFF}T00:00:00Z`).getTime();
+  const end = new Date(`${TARGET}T00:00:00Z`).getTime();
+  const now = Date.now();
+  const totalDays = Math.round((end - start) / DAY_MS);
+  const elapsed = Math.min(totalDays, Math.max(0, Math.floor((now - start) / DAY_MS)));
+  const daysLeft = Math.max(0, Math.ceil((end - now) / DAY_MS));
+  const timePct = Math.round((elapsed / totalDays) * 100);
+  return { totalDays, elapsed, daysLeft, timePct };
 }

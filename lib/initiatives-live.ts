@@ -7,8 +7,8 @@
  */
 
 import { getCurrentWeekStart } from "@/lib/week";
-import type { Initiative, LiveMetricKind } from "@/lib/initiatives";
-import { getGa4Summary, isGa4Configured } from "@/lib/sources/ga4";
+import { KICKOFF, type Initiative, type LiveMetricKind } from "@/lib/initiatives";
+import { getGa4Summary, getGa4TagMatch, isGa4Configured } from "@/lib/sources/ga4";
 import { getTypeformSources, isTypeformConfigured } from "@/lib/sources/typeform";
 import { buildAttributionComparison } from "@/lib/attribution-compare";
 import {
@@ -96,24 +96,25 @@ async function resolve(
 
     case "referral_domain": {
       if (!isGa4Configured()) return null;
-      const summary = await getGa4Summary(30);
-      // The GA4 summary's byChannel doesn't include source-level detail;
-      // this is a lightweight heuristic — a real referrer domain check would
-      // need an extra API call. For v1, just note whether ANY Referral traffic
-      // exists, since the specific domain will bubble up in the Referrals
-      // page anyway once traffic starts flowing.
-      const ref = summary.byChannel.find((c) => c.channel === "Referral");
-      const sessions = ref?.sessions ?? 0;
+      // Match on the brand token in either source or UTM campaign, since the
+      // newsletter traffic may be UTM-tagged rather than a clean referral.
+      const needle = m.domain.split(".")[0].replace(/focus$/, "");
+      const r = await getGa4TagMatch(needle, KICKOFF);
+      const top = r.rows
+        .slice(0, 3)
+        .map((x) => `${x.source} / ${x.medium} / ${x.campaign}: ${x.sessions}`)
+        .join(" · ");
       return {
         label: m.label,
         value:
-          sessions > 0
-            ? `${sessions} total Referral sessions last 30 days`
-            : "no referral traffic yet",
-        tone: sessions > 0 ? "positive" : "neutral",
+          r.sessions > 0
+            ? `${r.sessions.toLocaleString()} sessions · ${r.keyEvents} key events`
+            : "no traffic matching 'primal' since kickoff",
+        tone: r.keyEvents > 0 ? "positive" : "neutral",
         detail:
-          `Check /channels/referrals for the source-level breakdown — ` +
-          `${m.domain} will appear there once traffic flows.`,
+          r.sessions > 0
+            ? `Peak day ${r.peakDay?.date} (${r.peakDay?.sessions} sessions). ${top}`
+            : undefined,
       };
     }
   }
